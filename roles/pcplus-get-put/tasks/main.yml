@@ -1,0 +1,24 @@
+---
+- name: Install packages and create directory
+  ansible.builtin.include_tasks: 01_setup.yml
+
+- name: Validate datastream, permissions, and available disk space
+  ansible.builtin.include_tasks: 02_validation.yml
+
+- name: Remove old scans inline with policy and compress those being retained
+  ansible.builtin.include_tasks: 03_cleanup.yml
+
+- name: Initialise variable(s) and current scan directory
+  ansible.builtin.include_tasks: 04_initialise.yml
+
+- name: Run Lynis and generate report
+  ansible.builtin.include_tasks: 05_lynis.yml
+
+- name: Run OpenSCAP and generate report
+  ansible.builtin.include_tasks: 06_openscap.yml
+
+- name: Validate scans are complete, re-run retention cleaning, store scan results
+  ansible.builtin.include_tasks: 07_validate_and_store.yml
+
+- name: Extract result variables for ouput and display final results
+  ansible.builtin.include_tasks: 08_display_results.yml

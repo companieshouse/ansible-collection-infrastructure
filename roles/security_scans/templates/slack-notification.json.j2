@@ -1,0 +1,19 @@
+[
+  {
+    "fallback": "{{ ansible_hostname }} security scan results",
+    "pretext": "*<$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME|$BUILD_JOB_NAME>*",
+    "fields": [
+      {
+        "title": "Lynis Hardening Index",
+        "value": "{% if security_scans_lynis_hardening_index.stdout %}{{ security_scans_lynis_hardening_index.stdout }}%{% else %}n/a{% endif %}",
+        "short": true
+      },
+      {
+        "title": "OpenSCAP {{ security_scans_oscap_profile_display }}",
+        "value": "{% if security_scans_oscap_compliance_score.stdout %}{{ security_scans_oscap_compliance_score.stdout }}%{% else %}n/a{% endif %}",
+        "short": true
+      }
+    ],
+    "color": "{% if (security_scans_lynis_hardening_index.stdout | int < 65) or (security_scans_oscap_compliance_score.stdout | float < 70.0) %}danger{% elif (security_scans_lynis_hardening_index.stdout | int < 75) or (security_scans_oscap_compliance_score.stdout | float < 80.0) %}warning{% else %}good{% endif %}"
+  }
+]
