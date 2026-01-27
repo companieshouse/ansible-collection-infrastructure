@@ -13,17 +13,6 @@
 #          {{ s3_folders.stdout_lines | map('regex_search', '^PRE\\s+ (\d{4}_Q\d)', '/$' '\1') | select('string') | unique | sort | list }}
 #
     
-#    - name: Parse folder names (corrected)
-#      set_fact:
-#        pcplus_folders: >-
-#           {{ s3_folders.stdout_lines
-#             | map('regex_search', '^\\s+PRE\\s+(\\d{4}_Q\\d)/?$', '\\1')
-#             | select('string')
-#             | unique
-#             | sort
-#             | list }}
-
-    
     - name: Parse quarter folders with regex_replace (simple)
       set_fact:
         pcplus_folders: >-
