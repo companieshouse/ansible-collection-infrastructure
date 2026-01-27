@@ -7,11 +7,43 @@
       register: s3_folders
       failed_when: s3_folders.rc != 0
 
-    - name: Parse folder names
+#    - name: Parse folder names
+#      set_fact:
+#        pcplus_folders: >-
+#          {{ s3_folders.stdout_lines | map('regex_search', '^PRE\\s+ (\d{4}_Q\d)', '/$' '\1') | select('string') | unique | sort | list }}
+#
+    
+#    - name: Parse folder names (corrected)
+#      set_fact:
+#        pcplus_folders: >-
+#           {{ s3_folders.stdout_lines
+#             | map('regex_search', '^\\s+PRE\\s+(\\d{4}_Q\\d)/?$', '\\1')
+#             | select('string')
+#             | unique
+#             | sort
+#             | list }}
+
+    
+    - name: Parse quarter folders with regex_replace (simple)
       set_fact:
         pcplus_folders: >-
-          {{ s3_folders.stdout_lines | map('regex_search', '^(\d{4}_Q\d)', '\1') | select('string') | list }}
+          {{ s3_folders.stdout_lines
+             | map('regex_replace', '^\\s*PRE\\s+([^/]+)/?$', '\\1')
+             | select('match', '^\\d{4}_Q\\d$')
+             | unique
+             | sort
+             | list }}
 
+
+    
+    - name: Log folders as structured data
+      debug:
+        msg:
+          event: "pcplus_folders_discovered"
+          count: "{{ pcplus_folders | length }}"
+          folders: "{{ pcplus_folders }}"
+
+    
     - name: Ensure at least one folder exists
       fail:
         msg: " No quarterly folders found in S3!"
