@@ -1,0 +1,6 @@
+---
+- name: Unzip_compa14
+  ansible.builtin.unarchive:
+    src: "{{ pcplus_local_zip_path }}"
+    dest: "{{ pcplus_extract_path }}"
+    remote_src: true

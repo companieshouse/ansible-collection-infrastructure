@@ -1,0 +1,12 @@
+---
+- name: Download COMPA14
+  ansible.builtin.import_tasks: download.yml
+
+- name: Manage quarterly S3 folders
+  ansible.builtin.import_tasks: s3_manage.yml
+
+- name: Upload data to S3 for new quarter
+  ansible.builtin.import_tasks: upload_s3.yml
+
+- name: Update EC2 instance with latest PCPlus data
+  ansible.builtin.import_tasks: update_ec2.yml

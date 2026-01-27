@@ -1,7 +1,0 @@
----
-- name: Download and extract zip file
-  ansible.builtin.include_tasks: 01_download-extract.yml
-
-- name: S3 management
-  ansible.builtin.include_tasks: 02_S3-management.yml
-

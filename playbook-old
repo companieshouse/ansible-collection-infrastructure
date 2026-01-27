@@ -1,0 +1,7 @@
+---
+- name: Provision Ansible controller with SSH key for remote
+  hosts: localhost
+  become: true
+  gather_facts: true
+  roles:
+    - role: pcplus-get-put
