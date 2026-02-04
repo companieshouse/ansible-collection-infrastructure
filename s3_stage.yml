@@ -1,0 +1,6 @@
+---
+- name: Run PCPlus S3 staging
+  hosts: localhost
+  gather_facts: true
+  roles:
+    - pcplus_s3_stage

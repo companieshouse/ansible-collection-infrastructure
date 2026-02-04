@@ -1,0 +1,17 @@
+---
+pcplus_s3_stage_work_dir: "/tmp/pcplus_work"
+pcplus_s3_stage_download_url: "https://download.afd.co.uk/Support/COMPA14.zip"
+
+pcplus_s3_stage_aws_region: "eu-west-2"
+pcplus_s3_stage_s3_bucket: "shared-services.eu-west-2.resources.ch.gov.uk"
+pcplus_s3_stage_s3_prefix: "pcplus"
+
+pcplus_s3_stage__year: "{{ ansible_date_time.year | int }}"
+pcplus_s3_stage__month: "{{ ansible_date_time.month | int }}"
+pcplus_s3_stage__q: "{{ (((pcplus_s3_stage__month | int) - 1) // 3) + 1 }}"
+
+#pcplus_s3_stage_current_quarter: "{{(pcplus_s3_stage__year | int) }}_Q{{ pcplus_s3_stage__q }}"
+#pcplus_s3_stage_old_quarter: "{{ ((pcplus_s3_stage__year | int) - 1) }}_Q{{ pcplus_s3_stage__q }}"
+
+pcplus_s3_stage_current_quarter: "{{ (pcplus_s3_stage__year | int) ~ '_Q' ~ (pcplus_s3_stage__q | int) }}"
+pcplus_s3_stage_old_quarter: "{{ (pcplus_s3_stage__year - 1 | int) ~ '_Q' ~ (pcplus_s3_stage__q | int) }}"
