@@ -1,0 +1,6 @@
+---
+
+aws_cli_path: /usr/local/bin/aws
+aws_cli_url: https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip
+aws_cli_update: false
+aws_cli_temp_dir: /tmp

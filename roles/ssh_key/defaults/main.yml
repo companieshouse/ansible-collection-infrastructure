@@ -1,0 +1,13 @@
+---
+
+ssh_key_action: install
+
+ssh_key_mode: '0600'
+ssh_key_name: id_rsa
+ssh_key_owner: root
+ssh_key_group: root
+
+ssh_key_dir_check: true
+ssh_key_dir_group: root
+ssh_key_dir_mode: '0700'
+ssh_key_dir_owner: root

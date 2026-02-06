@@ -1,0 +1,29 @@
+---
+
+- name: Check for presence of Hashicorp Vault path variable
+  ansible.builtin.assert:
+    that:
+      - ssh_key_vault_path is defined
+    fail_msg: "Variable ssh_key_vault_path was not provided"
+    success_msg: "Variable ssh_key_vault_path was provided"
+
+- name: Retrieve SSH private key from Hashicorp Vault
+  ansible.builtin.set_fact:
+    ssh_key_json: "{{ lookup('community.hashi_vault.hashi_vault', ssh_key_vault_path) }}"
+
+- name: Ensure SSH directory exists
+  ansible.builtin.file:
+    path: "{{ ssh_dir_path }}"
+    owner: "{{ ssh_key_dir_owner }}"
+    group: "{{ ssh_key_dir_group }}"
+    state: directory
+    mode: '{{ ssh_key_dir_mode }}'
+  when: ssh_key_dir_check
+
+- name: Write SSH private key to Ansible controller
+  ansible.builtin.copy:
+    content: "{{ ssh_key_json['ssh_private_key'] | b64decode }}"
+    dest: "{{ ssh_key_path }}"
+    owner: "{{ ssh_key_owner }}"
+    group: "{{ ssh_key_group }}"
+    mode: '{{ ssh_key_mode }}'
