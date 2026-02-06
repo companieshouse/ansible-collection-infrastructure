@@ -1,9 +1,0 @@
-galaxy_info:
-  role_name: ssh_key
-  author: Companies House
-  description: Retrieve and install an SSH private key from Hashicorp Vault onto an Ansible controller host
-  license: MIT
-  min_ansible_version: 2.9.10
-  galaxy_tags:
-    - ssh
-  standalone: false

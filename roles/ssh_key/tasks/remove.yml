@@ -1,6 +1,0 @@
----
-
-- name: Remove key
-  ansible.builtin.file:
-    path: "{{ ssh_dir_path }}/{{ ssh_key_name }}"
-    state: absent
