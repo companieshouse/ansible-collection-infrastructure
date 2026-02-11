@@ -1,0 +1,18 @@
+---
+pcplus_run_server_update_aws_region: "eu-west-2"
+pcplus_run_server_update_s3_bucket: "shared-services.eu-west-2.resources.ch.gov.uk"
+pcplus_run_server_update_s3_prefix: "pcplus"
+
+pcplus_run_server_update__year: "{{ ansible_date_time.year | int }}"
+pcplus_run_server_update__month: "{{ ansible_date_time.month | int }}"
+pcplus_run_server_update__q: "{{ (((pcplus_run_server_update__month | int) - 1) // 3) + 1 }}"
+
+pcplus_run_server_update_current_quarter: "{{ (pcplus_run_server_update__year | int) }}_Q{{ pcplus_run_server_update__q }}"
+
+pcplus_run_server_update_pcplus_dir: "/opt/pcplus"
+pcplus_run_server_update_target_dir: "{{ pcplus_run_server_update_pcplus_dir }}/data_{{ pcplus_run_server_update_current_quarter }}"
+
+## access https://www.afd.co.uk/data-news/ scroll to "Changes in latest data"
+## copy postcode from latest quater and insert in postcode=" " as below.
+
+pcplus_run_server_update_postcode_lookup: "{{ postcode = LA95FT }}"

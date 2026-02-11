@@ -1,0 +1,127 @@
+---
+- name: Preflight | Ensure pcplus directory exists
+  ansible.builtin.file:
+    path: "{{ pcplus_run_server_update_pcplus_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Preflight | Check AWS CLI
+  block:
+    - name: Check for aws CLI
+      ansible.builtin.command: aws --version
+      register: pcplus_run_server_update__aws
+      changed_when: false
+      failed_when: pcplus_run_server_update__aws.rc != 0
+  rescue:
+    - name: Verify aws cli installation
+      ansible.builtin.fail:
+        msg: "AWS CLI missing on EC2"
+
+- name: Create directory for new quarter
+  ansible.builtin.file:
+    path: "{{ pcplus_run_server_update_target_dir }}"
+    state: directory
+    mode: "0755"
+
+- name: Copy data from S3
+  block:
+    - name: S3 data copy
+      ansible.builtin.command: >
+        aws s3 cp --recursive
+        s3://{{ pcplus_run_server_update_s3_bucket }}/{{ pcplus_run_server_update_s3_prefix }}/{{ pcplus_run_server_update_current_quarter }}/
+        "{{ pcplus_run_server_update_target_dir }}/"
+        --region {{ pcplus_run_server_update_aws_region }}
+      register: pcplus_run_server_update__dl
+      retries: 3
+      delay: 5
+      until: pcplus_run_server_update__dl.rc == 0
+      changed_when: "'download:' in _dl.stdout"
+      failed_when: pcplus_run_server_update__dl.rc != 0
+
+  rescue:
+    - name: Fail when S3 download to EC2 fails
+      ansible.builtin.fail:
+        msg: "Failed to fetch S3 data for {{ current_quarter }} into {{ target_dir }}"
+
+- name: Check if license exists
+  ansible.builtin.stat:
+    path: "{{ pcplus_run_server_update_target_dir }}/pcplus.lic"
+  register: pcplus_run_server_update__lic
+
+- name: Copy local license if missing
+  ansible.builtin.copy:
+    src: "{{ pcplus_run_server_update_pcplus_dir }}/pcplus.lic"
+    dest: "{{ pcplus_run_server_update_target_dir }}/pcplus.lic"
+    owner: root
+    group: root
+    mode: "0644"
+    remote_src: true
+  when: not _lic.stat.exists
+  failed_when: true
+
+- name: Ensure correct permissions
+  ansible.builtin.file:
+    path: "{{ pcplus_run_server_update_target_dir }}"
+    owner: root
+    group: root
+    mode: "0755"
+    recurse: true
+
+- name: Backup old data folder
+  block:
+    - name: Save old data
+      ansible.builtin.stat:
+        path: "{{ pcplus_run_server_update_pcplus_dir }}/data"
+      register: pcplus_run_server_update__old
+    - name: Replace old quater with new quater
+      ansible.builtin.command:
+        cmd: >
+          mv "{{ pcplus_run_server_update_pcplus_dir }}/data"
+          "{{ pcplus_run_server_update_pcplus_dir }}/backup_{{ pcplus_run_server_update_ansible_date_time.epoch }}"
+      register: pcplus_run_server_update__swap_mv
+      when: _old.stat.exists
+      changed_when: pcplus_run_server_update__swap_mv.rc == 0
+      failed_when: pcplus_run_server_update__swap_mv.rc != 0
+
+  rescue:
+    - name: Check backup status
+      ansible.builtin.fail:
+        msg: "Failed to backup existing data folder"
+
+- name: Replace data with new quarter
+  block:
+    - name: Copy data to new quarter
+      ansible.builtin.command:
+        cmd: mv "{{ pcplus_run_server_update_target_dir }}" "{{ pcplus_run_server_update_pcplus_dir }}/data"
+      register: pcplus_run_server_update__mv
+      when: not (_cur_data.stat.isdir)
+      changed_when: pcplus_run_server_update__mv.rc == 0
+      failed_when: pcplus_run_server_update__mv.rc != 0
+
+  rescue:
+    - name: Failed to replace data in new quarter
+      ansible.builtin.fail:
+        msg: "Failed to replace data directory"
+
+- name: Validate final state
+  ansible.builtin.stat:
+    path: "{{ pcplus_run_server_update_pcplus_dir }}/data"
+  register: pcplus_run_server_update__final
+
+- name: Assert final update completed
+  ansible.builtin.assert:
+    that:
+      - _final.stat.isdir
+    success_msg: "PCPlus server update complete"
+    fail_msg: "Data replacement failed"
+
+- name: Test postcode lookup
+  ansible.builtin.shell: >
+    set -o pipefail
+    /opt/pcplus/bin_linux64/console/addresslookup {{ pcplus_run_server_update_postcode_lookup }} | head -10
+  args:
+    executable: /bin/bash
+  register: postcode_output
+  changed_when: false
