@@ -16,4 +16,3 @@ pcplus_run_server_update_target_dir: "{{ pcplus_run_server_update_pcplus_dir }}/
 ## copy postcode from latest quater and insert in postcode=" " as below.
 
 pcplus_run_server_update_postcode_lookup: "{{ postcode = LA95FT }}"
-

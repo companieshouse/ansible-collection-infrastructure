@@ -123,6 +123,5 @@
     /opt/pcplus/bin_linux64/console/addresslookup {{ pcplus_run_server_update_postcode_lookup }} | head -10
   args:
     executable: /bin/bash
-  register: postcode_output
+  register: pcplus_run_server_update_postcode_output
   changed_when: false
-

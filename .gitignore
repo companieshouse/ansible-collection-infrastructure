@@ -29,6 +29,7 @@ fact_cache/
 # Ansible log files (if logging is enabled)
 ansible.log
 *.log
+server_update.yml
 
 # ─────────────────────────────────────────────
 # Python / Virtualenv (common for tooling)
