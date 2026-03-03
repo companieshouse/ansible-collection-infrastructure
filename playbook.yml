@@ -1,0 +1,7 @@
+---
+- name: Run PCPlus server update
+  hosts: pcplus_servers
+  become: true
+  gather_facts: true
+  roles:
+    - pcplus_run_server_update
