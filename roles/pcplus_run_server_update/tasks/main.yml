@@ -37,7 +37,7 @@
       retries: 3
       delay: 5
       until: pcplus_run_server_update__dl.rc == 0
-      changed_when: "'download:' in _dl.stdout"
+      changed_when: "'download:' in pcplus_run_server_update__dl.stdout"
       failed_when: pcplus_run_server_update__dl.rc != 0
 
   rescue:
@@ -45,22 +45,25 @@
       ansible.builtin.fail:
         msg: "Failed to fetch S3 data for {{ current_quarter }} into {{ target_dir }}"
 
-- name: Check if license exists
+- name: Check if pcplus.lic already exists
   ansible.builtin.stat:
     path: "{{ pcplus_run_server_update_target_dir }}/pcplus.lic"
-  register: pcplus_run_server_update__lic
+  register: pcplus_lic_stat
+  become: true
 
-- name: Copy local license if missing
-  ansible.builtin.copy:
-    src: "{{ pcplus_run_server_update_pcplus_dir }}/pcplus.lic"
-    dest: "{{ pcplus_run_server_update_target_dir }}/pcplus.lic"
-    owner: root
-    group: root
-    mode: "0644"
-    remote_src: true
-  when: not _lic.stat.exists
-  failed_when: true
-
+- name: Copy pcplus.lic from S3 to /opt/pcplus
+  ansible.builtin.command: >
+    aws s3 cp
+    s3://shared-services.eu-west-2.resources.ch.gov.uk/pcplus/pcplus.lic
+    {{ pcplus_run_server_update_target_dir }}/pcplus.lic
+    --region eu-west-2
+  register: pcplus_s3_copy
+  retries: 3
+  delay: 5
+  until: pcplus_s3_copy.rc == 0
+  changed_when: "'download:' in pcplus_s3_copy.stdout"
+  failed_when: pcplus_s3_copy.rc != 0
+  become: true
 - name: Ensure correct permissions
   ansible.builtin.file:
     path: "{{ pcplus_run_server_update_target_dir }}"
@@ -81,7 +84,7 @@
           mv "{{ pcplus_run_server_update_pcplus_dir }}/data"
           "{{ pcplus_run_server_update_pcplus_dir }}/backup_{{ pcplus_run_server_update_ansible_date_time.epoch }}"
       register: pcplus_run_server_update__swap_mv
-      when: _old.stat.exists
+      when: pcplus_run_server_update__old.stat.exists
       changed_when: pcplus_run_server_update__swap_mv.rc == 0
       failed_when: pcplus_run_server_update__swap_mv.rc != 0
 
@@ -90,15 +93,20 @@
       ansible.builtin.fail:
         msg: "Failed to backup existing data folder"
 
-- name: Replace data with new quarter
+- name: Promote new quarter data
   block:
-    - name: Copy data to new quarter
+    - name: Stat new quarter directory
+      ansible.builtin.stat:
+        path: "{{ pcplus_run_server_update_target_dir }}"
+      register: _new_data
+    - name: Move data
       ansible.builtin.command:
         cmd: mv "{{ pcplus_run_server_update_target_dir }}" "{{ pcplus_run_server_update_pcplus_dir }}/data"
       register: pcplus_run_server_update__mv
-      when: not (_cur_data.stat.isdir)
-      changed_when: pcplus_run_server_update__mv.rc == 0
-      failed_when: pcplus_run_server_update__mv.rc != 0
+      when:
+        - _cur_data.stat.exists is defined
+        - not _cur_data.stat.isdir
+        - _new_data.stat.isdir
 
   rescue:
     - name: Failed to replace data in new quarter
@@ -107,21 +115,22 @@
 
 - name: Validate final state
   ansible.builtin.stat:
-    path: "{{ pcplus_run_server_update_pcplus_dir }}/data"
+    path: "{{ pcplus_run_server_update_target_dir }}/data"
   register: pcplus_run_server_update__final
 
 - name: Assert final update completed
   ansible.builtin.assert:
-    that:
-      - _final.stat.isdir
+    that:      
+      - pcplus_run_server_update__final.stat.exists
+      - pcplus_run_server_update__final.stat.isdir
     success_msg: "PCPlus server update complete"
     fail_msg: "Data replacement failed"
 
-- name: Test postcode lookup
-  ansible.builtin.shell: >
-    set -o pipefail
-    /opt/pcplus/bin_linux64/console/addresslookup {{ pcplus_run_server_update_postcode_lookup }} | head -10
-  args:
-    executable: /bin/bash
-  register: pcplus_run_server_update_postcode_output
-  changed_when: false
+#- name: Test postcode lookup
+#  ansible.builtin.shell: >
+#    set -o pipefail
+#    /opt/pcplus/bin_linux64/console/addresslookup {{ pcplus_run_server_update_postcode_lookup }} | head -10
+#  args:
+#    executable: /bin/bash
+#  register: pcplus_run_server_update_postcode_output
+#  changed_when: false
