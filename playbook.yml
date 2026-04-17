@@ -8,4 +8,4 @@
   become: true
   gather_facts: true
   roles:
-    - pcplus_run_server_update
+     - pcplus_run_server_update
