@@ -12,6 +12,7 @@ pcplus_run_server_update_current_quarter: "{{ (pcplus_run_server_update__year | 
 pcplus_run_server_update_pcplus_dir: "/opt/pcplus"
 pcplus_run_server_update_target_dir: "{{ pcplus_run_server_update_pcplus_dir }}/data_{{ pcplus_run_server_update_current_quarter }}"
 
+pcplus_run_server_update_old_quarter: "2025_Q2"
 ## access https://www.afd.co.uk/data-news/ scroll to "Changes in latest data"
 ## copy postcode from latest quater and insert in postcode=" " as below.
 

@@ -51,7 +51,7 @@
   register: pcplus_lic_stat
   become: true
 
-- name: Copy pcplus.lic from S3 to /opt/pcplus
+- name: Copy pcplus.lic from S3 to /opt/pcplus/quater-folder
   ansible.builtin.command: >
     aws s3 cp
     s3://shared-services.eu-west-2.resources.ch.gov.uk/pcplus/pcplus.lic
@@ -64,6 +64,7 @@
   changed_when: "'download:' in pcplus_s3_copy.stdout"
   failed_when: pcplus_s3_copy.rc != 0
   become: true
+
 - name: Ensure correct permissions
   ansible.builtin.file:
     path: "{{ pcplus_run_server_update_target_dir }}"
@@ -76,13 +77,13 @@
   block:
     - name: Save old data
       ansible.builtin.stat:
-        path: "{{ pcplus_run_server_update_pcplus_dir }}/data"
+        path: "{{ pcplus_run_server_update_pcplus_dir }}/data_{{pcplus_run_server_update_old_quarter}}"
       register: pcplus_run_server_update__old
     - name: Replace old quater with new quater
       ansible.builtin.command:
         cmd: >
-          mv "{{ pcplus_run_server_update_pcplus_dir }}/data"
-          "{{ pcplus_run_server_update_pcplus_dir }}/backup_{{ pcplus_run_server_update_ansible_date_time.epoch }}"
+          mv "{{ pcplus_run_server_update_pcplus_dir }}/data_{{pcplus_run_server_update_old_quarter}}"
+          "{{ pcplus_run_server_update_pcplus_dir }}/backup_{{ ansible_date_time.epoch }}"
       register: pcplus_run_server_update__swap_mv
       when: pcplus_run_server_update__old.stat.exists
       changed_when: pcplus_run_server_update__swap_mv.rc == 0
@@ -93,25 +94,25 @@
       ansible.builtin.fail:
         msg: "Failed to backup existing data folder"
 
-- name: Promote new quarter data
-  block:
-    - name: Stat new quarter directory
-      ansible.builtin.stat:
-        path: "{{ pcplus_run_server_update_target_dir }}"
-      register: _new_data
-    - name: Move data
-      ansible.builtin.command:
-        cmd: mv "{{ pcplus_run_server_update_target_dir }}" "{{ pcplus_run_server_update_pcplus_dir }}/data"
-      register: pcplus_run_server_update__mv
-      when:
-        - _cur_data.stat.exists is defined
-        - not _cur_data.stat.isdir
-        - _new_data.stat.isdir
+- name: Check new quarter directory exists
+  ansible.builtin.stat:
+    path: "{{ pcplus_run_server_update_pcplus_dir }}/data_{{ pcplus_run_server_update_current_quarter }}"
+  register: new_quarter_dir
 
-  rescue:
-    - name: Failed to replace data in new quarter
-      ansible.builtin.fail:
-        msg: "Failed to replace data directory"
+- name: Check old quarter directory exists
+  ansible.builtin.stat:
+    path: "{{ pcplus_run_server_update_pcplus_dir }}/data_{{ pcplus_run_server_update_old_quarter }}"
+  register: old_quarter_dir
+
+- name: Delete old quarter folder if new quarter exists
+  ansible.builtin.file:
+    path: "{{ pcplus_run_server_update_pcplus_dir }}/data_{{ pcplus_run_server_update_old_quarter }}"
+    state: absent
+  when:
+    - new_quarter_dir.stat.exists
+    - new_quarter_dir.stat.isdir
+    - old_quarter_dir.stat.exists
+    - old_quarter_dir.stat.isdir
 
 - name: Validate final state
   ansible.builtin.stat:
