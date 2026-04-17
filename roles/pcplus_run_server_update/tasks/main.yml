@@ -130,7 +130,7 @@
 #- name: Test postcode lookup
 #  ansible.builtin.shell: >
 #    set -o pipefail
-#    /opt/pcplus/bin_linux64/console/addresslookup {{ pcplus_run_server_update_postcode_lookup }} | head -10
+#    /opt/pcplus/bin_linux64/console/addresslookup  postcode="${{afd-code}}" | head -10
 #  args:
 #    executable: /bin/bash
 #  register: pcplus_run_server_update_postcode_output

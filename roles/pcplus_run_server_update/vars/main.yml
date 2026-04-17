@@ -13,7 +13,12 @@ pcplus_run_server_update_pcplus_dir: "/opt/pcplus"
 pcplus_run_server_update_target_dir: "{{ pcplus_run_server_update_pcplus_dir }}/data_{{ pcplus_run_server_update_current_quarter }}"
 
 pcplus_run_server_update_old_quarter: "2025_Q2"
+#########
+
+## please follow this link to get latest code afd-code for current quarter " https://www.afd.co.uk/data-news/ "
+afd-code: "LA95FT"
+
 ## access https://www.afd.co.uk/data-news/ scroll to "Changes in latest data"
 ## copy postcode from latest quater and insert in postcode=" " as below.
 
-pcplus_run_server_update_postcode_lookup: "{{ postcode = LA95FT }}"
+#pcplus_run_server_update_postcode_lookup: "{{ postcode = LA95FT }}"
