@@ -1,5 +1,5 @@
 namespace: "companieshouse"
-name: "security"
+name: "infrastructure"
 version: "{{ version }}"
 readme: "README.md"
 authors:
@@ -8,12 +8,10 @@ description: "A collection comprising security Ansible roles and playbooks for u
 license_file: "LICENSE"
 tags:
   - pcplus_run_server_update
-  - copy_lic
-  - security
 dependencies:
   "ansible.posix": ">=1.5.4"
   "community.hashi_vault": ">=6.2.0"
 
-repository: "https://github.com/companieshouse/"
+repository: "https://github.com/companieshouse/ansible-collection-infrastructure"
 build_ignore:
   - templates
