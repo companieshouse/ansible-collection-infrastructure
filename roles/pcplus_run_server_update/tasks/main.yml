@@ -19,118 +19,76 @@
       ansible.builtin.fail:
         msg: "AWS CLI missing on EC2"
 
-- name: Create directory for new quarter
+- name: Create data_new directory
   ansible.builtin.file:
-    path: "{{ pcplus_run_server_update_target_dir }}"
+    path: "{{ pcplus_run_server_update_pcplus_dir }}/{{ pcplus_run_server_update_pcplus_new_dir }}"
     state: directory
-    mode: "0755"
-
-- name: Copy data from S3
-  block:
-    - name: S3 data copy
-      ansible.builtin.command: >
-        aws s3 cp --recursive
-        s3://{{ pcplus_run_server_update_s3_bucket }}/{{ pcplus_run_server_update_s3_prefix }}/{{ pcplus_run_server_update_current_quarter }}/data
-        "{{ pcplus_run_server_update_target_dir }}/"
-        --region {{ pcplus_run_server_update_aws_region }}
-      register: pcplus_run_server_update__dl
-      retries: 3
-      delay: 5
-      until: pcplus_run_server_update__dl.rc == 0
-      changed_when: "'download:' in pcplus_run_server_update__dl.stdout"
-      failed_when: pcplus_run_server_update__dl.rc != 0
-
-  rescue:
-    - name: Fail when S3 download to EC2 fails
-      ansible.builtin.fail:
-        msg: "Failed to fetch S3 data for {{ current_quarter }} into {{ target_dir }}"
-
-- name: Ensure correct permissions
-  ansible.builtin.file:
-    path: "{{ pcplus_run_server_update_target_dir }}"
     owner: root
     group: root
     mode: "0755"
-    recurse: true
-- name: Ensure correct permissions
-  ansible.builtin.file:
-    path: "{{ pcplus_run_server_update_target_dir }}"
-    owner: root
-    group: root
-    mode: "0755"
-    recurse: true
+  become: true
 
-- name: Backup old data folder
+- name: Copy quarterly PCPlus data from S3
+  ansible.builtin.command: >
+    aws s3 cp --recursive
+    s3://{{ pcplus_run_server_update_pcplus_bucket }}/pcplus/{{ pcplus_run_server_update_pcplus_quarter }}/data
+    {{ pcplus_run_server_update_pcplus_dir }}/{{ pcplus_run_server_update_pcplus_new_dir }}/
+    --region {{ pcplus_run_server_update_aws_region }}
+  register: pcplus_copy_data
+  retries: 3
+  delay: 5
+  until: pcplus_copy_data.rc == 0
+  changed_when: "'download:' in pcplus_copy_data.stdout"
+  failed_when: pcplus_copy_data.rc != 0
+  become: true
+
+- name: Copy pcplus.lic into data_new
+  ansible.builtin.command: >
+    aws s3 cp
+    s3://{{ pcplus_run_server_update_pcplus_bucket }}/pcplus/pcplus.lic
+    {{ pcplus_run_server_update_pcplus_dir }}/{{ pcplus_run_server_update_pcplus_new_dir }}/pcplus.lic
+    --region {{ pcplus_run_server_update_aws_region }}
+  register: pcplus_copy_lic
+  retries: 3
+  delay: 5
+  until: pcplus_copy_lic.rc == 0
+  changed_when: "'download:' in pcplus_copy_lic.stdout"
+  failed_when: pcplus_copy_lic.rc != 0
+  become: true
+
+- name: Stat current data directory
+  ansible.builtin.stat:
+    path: "{{ pcplus_run_server_update_pcplus_dir }}/data"
+  register: pcplus_current_data
+  become: true
+
+- name: Promote new data and backup old data
   block:
-
-    - name: Stat current data directory
-      ansible.builtin.stat:
-        path: "{{ pcplus_run_server_update_pcplus_dir }}/data"
-      register: pcplus_run_server_update__old
 
     - name: Backup existing data directory
-      ansible.builtin.command:
-        cmd: >
-          mv "{{ pcplus_run_server_update_pcplus_dir }}/data"
-             "{{ pcplus_run_server_update_pcplus_dir }}/backup_{{ lookup('pipe', 'date +%s') }}"
-      register: pcplus_run_server_update__swap_mv
+      ansible.builtin.command: >
+        mv "{{ pcplus_run_server_update_pcplus_dir }}/data"
+           "{{ pcplus_run_server_update_pcplus_dir }}/{{ pcplus_run_server_update_pcplus_old_dir }}"
       when:
-        - pcplus_run_server_update__old.stat.exists
-        - pcplus_run_server_update__old.stat.isdir
-      changed_when: pcplus_run_server_update__swap_mv.rc == 0
-      failed_when: pcplus_run_server_update__swap_mv.rc != 0
+        - pcplus_current_data.stat.exists
+        - pcplus_current_data.stat.isdir
+      become: true
+
+    - name: Move data_new into place as data
+      ansible.builtin.command: >
+        mv "{{ pcplus_run_server_update_pcplus_dir }}/{{ pcplus_run_server_update_pcplus_new_dir }}"
+           "{{ pcplus_run_server_update_pcplus_dir }}/data"
+      become: true
 
   rescue:
-    - name: Fail when backup cannot be created
+    - name: Fail if data promotion fails
       ansible.builtin.fail:
-        msg: >
-          Failed to backup existing data directory at
-          {{ pcplus_run_server_update_pcplus_dir }}/data
+        msg: "Failed to promote data_new to active data directory"
 
-
-- name: Replace data with new quarter
-  block:
-    - name: Remove existing data directory if present
-      ansible.builtin.file:
-        path: "{{ pcplus_run_server_update_pcplus_dir }}/data"
-      register: _cur_data
-#        state: present
-      when: _cur_data.stat.exists | default(false)      
-
-    - name: Stat new quarter directory
-      ansible.builtin.stat:
-        path: "{{ pcplus_run_server_update_target_dir }}"
-      register: _new_data
-
-    - name: Stat current data directory
-      ansible.builtin.stat:
-        path: "{{ pcplus_run_server_update_pcplus_dir }}"
-      register: _cur_data
-
-- name: Promote new quarter data
-  block:
-    - name: Remove existing data directory if present
-      ansible.builtin.file:
-        path: "{{ pcplus_run_server_update_pcplus_dir }}/data"
-        state: absent
-      when:
-        - _cur_data.stat.exists
-        - _cur_data.stat.isdir
-
-    - name: Move new quarter into place
-      ansible.builtin.command:
-        cmd: >
-          mv "{{ pcplus_run_server_update_target_dir }}"
-             "{{ pcplus_run_server_update_pcplus_dir }}/data"
-      register: pcplus_run_server_update__mv
-      changed_when: pcplus_run_server_update__mv.rc == 0
-      failed_when: pcplus_run_server_update__mv.rc != 0
-      when:
-        - _new_data is defined
-        - _new_data.stat.exists
-        - _new_data.stat.isdir
-
-  rescue:
-    - name: Failed to replace data in new quarter
-      ansible.builtin.fail:
-        msg: "Failed to replace data directory"
+- name: Ensure correct permissions
+  ansible.builtin.file:
+    path: "{{ pcplus_run_server_update_pcplus_dir }}/data"
+    owner: root
+    group: root
+    mode: "0755"
+    recurse: true
