@@ -1,0 +1,16 @@
+- name: Check if license exists
+  ansible.builtin.stat:
+    path: "{{ copy_lic_pcplus_dir }}/data/pcplus.lic"
+  register: copy_lic_update__lic
+  become: true
+
+- name: Copy local license if missing
+  ansible.builtin.copy:
+    src: "{{ copy_lic_pcplus_dir }}/pcplus.lic"
+    dest: "{{ copy_lic_pcplus_dir }}/data/pcplus.lic"
+    owner: root
+    group: root
+    mode: "0755"
+    remote_src: true
+  when: not copy_lic_update__lic.stat.exists
+  become: true

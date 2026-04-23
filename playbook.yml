@@ -1,11 +1,9 @@
 ---
 - name: Run PCPlus server update
   hosts:
-     - localhost
-#    - chips-oltp-db-01.staging.heritage.aws.internal
-#    - chips-oltp-db-02.staging.heritage.aws.internal
-#    - chips-dba-dev-01.staging.heritage.aws.internal
+     - all
   become: true
   gather_facts: true
   roles:
      - pcplus_run_server_update
+     - copy_lic

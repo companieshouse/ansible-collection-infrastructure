@@ -1,0 +1,8 @@
+copy_lic_pcplus_dir: "/opt/pcplus"
+
+copy_lic__year: "{{ ansible_date_time.year | int }}"
+copy_lic__month: "{{ ansible_date_time.month | int }}"
+copy_lic__q: "{{ (((copy_lic__month | int) - 1) // 3) + 1 }}"
+
+copy_lic_current_quarter: "{{ (copy_lic__year | int) }}_Q{{ copy_lic__q }}"
+copy_lic_target_dir: "{{ copy_lic_pcplus_dir }}/data_{{ copy_lic_current_quarter }}"
