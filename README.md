@@ -1,5 +1,5 @@
-# ansible-collection-security
-An Ansible Galaxy collection comprising security Ansible roles and playbooks for use in Companies House projects.
+# ansible-collection-infrastructure
+An Ansible Galaxy collection comprising infrastructure Ansible roles and playbooks for use in Companies House projects.
 
 ## Authors
 - [samh241](https://github.com/samh241)

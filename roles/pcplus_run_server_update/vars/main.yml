@@ -2,7 +2,6 @@
 pcplus_run_server_update_pcplus_dir: "/opt/pcplus"
 pcplus_run_server_update_pcplus_new_dir: "data_new"
 pcplus_run_server_update_pcplus_old_dir: "data_old"
-#pcplus_run_server_update_pcplus_quarter: "2026_Q2"
 pcplus_run_server_update_pcplus_bucket: "shared-services.eu-west-2.resources.ch.gov.uk"
 pcplus_run_server_update_aws_region: "eu-west-2"
 pcplus_run_server_update__year: "{{ ansible_date_time.year | int }}"
