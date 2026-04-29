@@ -28,33 +28,46 @@
     mode: "0755"
   become: true
 
-- name: Copy quarterly PCPlus data from S3
-  ansible.builtin.command: >
-    aws s3 cp --recursive
-    s3://{{ pcplus_run_server_update_pcplus_bucket }}/pcplus/{{ pcplus_run_server_update_pcplus_quarter }}/data
-    {{ pcplus_run_server_update_pcplus_dir }}/{{ pcplus_run_server_update_pcplus_new_dir }}/
-    --region {{ pcplus_run_server_update_aws_region }}
-  register: pcplus_copy_data
-  retries: 3
-  delay: 5
-  until: pcplus_copy_data.rc == 0
-  changed_when: "'download:' in pcplus_copy_data.stdout"
-  failed_when: pcplus_copy_data.rc != 0
-  become: true
+- name: Validate and fetch PCPlus current quarter data
+  block:
 
-- name: Copy pcplus.lic into data_new
-  ansible.builtin.command: >
-    aws s3 cp
-    s3://{{ pcplus_run_server_update_pcplus_bucket }}/pcplus/pcplus.lic
-    {{ pcplus_run_server_update_pcplus_dir }}/{{ pcplus_run_server_update_pcplus_new_dir }}/pcplus.lic
-    --region {{ pcplus_run_server_update_aws_region }}
-  register: pcplus_copy_lic
-  retries: 3
-  delay: 5
-  until: pcplus_copy_lic.rc == 0
-  changed_when: "'download:' in pcplus_copy_lic.stdout"
-  failed_when: pcplus_copy_lic.rc != 0
-  become: true
+    - name: Check if current quarter data exists in S3
+      ansible.builtin.command: >
+        aws s3 ls
+        s3://{{ pcplus_run_server_update_pcplus_bucket }}/pcplus/{{ pcplus_run_server_update_pcplus_quarter }}/data/
+      register: pcplus_s3_check
+      changed_when: false
+      failed_when: false
+
+    - name: Copy current quarter data from S3
+      ansible.builtin.command: >
+        aws s3 cp --recursive
+        s3://{{ pcplus_run_server_update_pcplus_bucket }}/pcplus/{{ pcplus_run_server_update_pcplus_quarter }}/data/
+        {{ pcplus_run_server_update_pcplus_dir }}/{{ pcplus_run_server_update_pcplus_new_dir }}/
+      register: pcplus_copy_data
+      retries: 3
+      delay: 5
+      until: pcplus_copy_data.rc == 0
+      changed_when: "'download:' in pcplus_copy_data.stdout"
+      failed_when: pcplus_copy_data.rc != 0
+      when:
+        - pcplus_s3_check.rc == 0
+        - pcplus_s3_check.stdout != ""
+      become: true
+
+    - name: Fail if S3 data missing
+      ansible.builtin.fail:
+        msg: >
+          Current quarter folder missing:
+          s3://{{ pcplus_run_server_update_pcplus_bucket }}/pcplus/{{ pcplus_run_server_update_pcplus_quarter }}/data/
+      when:
+        - pcplus_s3_check.rc != 0 or pcplus_s3_check.stdout == ""
+
+  rescue:
+    - name: Fail whole operation if validation fails
+      ansible.builtin.fail:
+        msg: "Failed to validate or copy current quarter S3 data"
+
 
 - name: Stat current data directory
   ansible.builtin.stat:

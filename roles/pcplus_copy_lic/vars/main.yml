@@ -1,0 +1,4 @@
+---
+pcplus_copy_lic__pcplus_dir: "/opt/pcplus"
+pcplus_copy_lic__lic_dir: "{{pcplus_copy_lic__pcplus_dir}}/data"
+pcplus_copy_lic_old_dir: "data_old"
