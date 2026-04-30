@@ -47,12 +47,12 @@
       register: pcplus_run_server_update_pcplus_copy_data
       retries: 3
       delay: 5
-      until: pcplus_copy_data.rc == 0
-      changed_when: "'download:' in pcplus_copy_data.stdout"
-      failed_when: pcplus_copy_data.rc != 0
+      until: pcplus_run_server_update_pcplus_copy_data.rc == 0
+      changed_when: "'download:' in pcplus_run_server_update_pcplus_copy_data.stdout"
+      failed_when: pcplus_run_server_update_pcplus_copy_data.rc != 0
       when:
-        - pcplus_s3_check.rc == 0
-        - pcplus_s3_check.stdout != ""
+        - pcplus_run_server_update_pcplus_s3_check.rc == 0
+        - pcplus_run_server_update_pcplus_s3_check.stdout != ""
       become: true
 
     - name: Fail if S3 data missing
@@ -61,7 +61,7 @@
           Current quarter folder missing:
           s3://{{ pcplus_run_server_update_pcplus_bucket }}/pcplus/{{ pcplus_run_server_update_pcplus_quarter }}/data/
       when:
-        - pcplus_s3_check.rc != 0 or pcplus_s3_check.stdout == ""
+        - pcplus_run_server_update_pcplus_s3_check.rc != 0 or pcplus_run_server_update_pcplus_s3_check.stdout == ""
 
   rescue:
     - name: Fail whole operation if validation fails
@@ -87,7 +87,7 @@
     path: "{{ pcplus_run_server_update_pcplus_dir }}/{{ pcplus_run_server_update_pcplus_old_dir }}/data"
     state: absent
   when:
-    - pcplus_old_nested_data.stat.exists
+    - pcplus_run_server_update_pcplus_old_nested_data.stat.exists
   become: true
 
 
@@ -100,10 +100,10 @@
            "{{ pcplus_run_server_update_pcplus_dir }}/{{ pcplus_run_server_update_pcplus_old_dir }}"
       register: pcplus_run_server_update_backup_mv
       when:
-        - pcplus_current_data.stat.exists
-        - pcplus_current_data.stat.isdir
-      changed_when: backup_mv.rc == 0
-      failed_when: backup_mv.rc != 0
+        - pcplus_run_server_update_pcplus_current_data.stat.exists
+        - pcplus_run_server_update_pcplus_current_data.stat.isdir
+      changed_when: pcplus_run_server_update_backup_mv.rc == 0
+      failed_when: pcplus_run_server_update_backup_mv.rc != 0
       become: true
 
     - name: Move data_new into place as data
