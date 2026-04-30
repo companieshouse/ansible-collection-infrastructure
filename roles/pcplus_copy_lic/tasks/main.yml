@@ -1,15 +1,46 @@
-- name: Copy pcplus.lic into data_new
-  ansible.builtin.command: >
-    aws s3 cp
-    s3://{{ pcplus_run_server_update_pcplus_bucket }}/pcplus/pcplus.lic
-    {{ pcplus_run_server_update_pcplus_dir }}/{{ pcplus_run_server_update_pcplus_new_dir }}/pcplus.lic
-    --region {{ pcplus_run_server_update_aws_region }}
-  register: pcplus_copy_lic
-  retries: 3
-  delay: 5
-  until: pcplus_copy_lic.rc == 0
-  changed_when: "'download:' in pcplus_copy_lic.stdout"
-  failed_when: pcplus_copy_lic.rc != 0
-  become: true
+- name: Validate and fetch PCPlus license
+  block:
 
+    - name: Check if pcplus.lic exists in S3
+      ansible.builtin.command: >
+        aws s3 ls
+        s3://{{ pcplus_copy_lic_pcplus_bucket }}/pcplus/pcplus.lic
+      register: pcplus_lic_s3_check
+      changed_when: false
+      failed_when: false
 
+    - name: Copy pcplus.lic into data directory
+      ansible.builtin.command: >
+        aws s3 cp
+        s3://{{ pcplus_copy_lic_pcplus_bucket }}/pcplus/pcplus.lic
+        {{ pcplus_copy_lic_pcplus_dir }}/data/pcplus.lic
+      register: pcplus_copy_lic
+      retries: 3
+      delay: 5
+      until: pcplus_copy_lic.rc == 0
+      changed_when: "'download:' in pcplus_copy_lic.stdout"
+      failed_when: pcplus_copy_lic.rc != 0
+      when:
+        - pcplus_lic_s3_check.rc == 0
+      become: true
+
+    - name: Fail if pcplus.lic missing
+      ansible.builtin.fail:
+        msg: >
+          PCPlus license missing in S3:
+          s3://{{ pcplus_copy_lic_pcplus_bucket }}/pcplus/pcplus.lic
+      when:
+        - pcplus_lic_s3_check.rc != 0
+
+  rescue:
+    - name: Fail license validation step
+      ansible.builtin.fail:
+        msg: "Failed to validate or fetch PCPlus license"
+
+- name: Ensure correct permissions
+  ansible.builtin.file:
+    path: "{{ pcplus_copy_lic_pcplus_dir }}/data"
+    owner: root
+    group: root
+    mode: "0755"
+    recurse: true

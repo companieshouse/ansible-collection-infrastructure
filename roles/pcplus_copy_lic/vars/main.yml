@@ -1,4 +1,5 @@
 ---
-pcplus_copy_lic__pcplus_dir: "/opt/pcplus"
-pcplus_copy_lic__lic_dir: "{{pcplus_copy_lic__pcplus_dir}}/data"
+pcplus_copy_lic_pcplus_dir: "/opt/pcplus"
+pcplus_copy_lic_lic_dir: "{{pcplus_copy_lic__pcplus_dir}}/data"
 pcplus_copy_lic_old_dir: "data_old"
+pcplus_copy_lic_pcplus_bucket: "shared-services.eu-west-2.resources.ch.gov.uk"
