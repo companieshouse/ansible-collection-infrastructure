@@ -9,7 +9,7 @@ An Ansible Galaxy collection comprising infrastructure Ansible roles and playboo
 #########################################
 
 
-The code is **idempotent**, **ansible‑lint clean**, and **safe to re‑run in CI/Concourse**.
+The code is *idempotent*, *ansible‑lint clean*, and *safe to re‑run*.
 
 This playbook automates the **quarterly AFD‑Postcode (PCPlus) data update**
 on EC2 hosts.
