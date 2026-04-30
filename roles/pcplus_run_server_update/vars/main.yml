@@ -1,0 +1,10 @@
+---
+pcplus_run_server_update_pcplus_dir: "/opt/pcplus"
+pcplus_run_server_update_pcplus_new_dir: "data_new"
+pcplus_run_server_update_pcplus_old_dir: "data_old"
+pcplus_run_server_update_pcplus_bucket: "shared-services.eu-west-2.resources.ch.gov.uk"
+pcplus_run_server_update_aws_region: "eu-west-2"
+pcplus_run_server_update__year: "{{ ansible_date_time.year | int }}"
+pcplus_run_server_update__month: "{{ ansible_date_time.month | int }}"
+pcplus_run_server_update__q: "{{ (((pcplus_run_server_update__month | int) - 1) // 3) + 1 }}"
+pcplus_run_server_update_pcplus_quarter: "{{ (pcplus_run_server_update__year | int) }}_Q{{ pcplus_run_server_update__q }}"

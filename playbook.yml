@@ -1,0 +1,9 @@
+---
+- name: Run PCPlus server update
+  hosts:
+     - localhost
+  become: true
+  gather_facts: true
+  roles:
+     - pcplus_run_server_update
+     - pcplus_copy_lic

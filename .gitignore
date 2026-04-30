@@ -1,0 +1,87 @@
+# ─────────────────────────────────────────────
+# Ansible
+# ─────────────────────────────────────────────
+
+# Ansible retry files
+*.retry
+
+# Vault backup files
+*.vault-pass
+*.vault
+
+# Local inventory overrides
+inventory_local*
+inventory_dev*
+inventory_test*
+inventory_stage*
+inventory_prod_local*
+
+# SSH keys or temp credentials (never commit these)
+*.pem
+*.key
+*.pub
+.ssh/
+
+# Temporary fact caching folders (if using JSON/dir cache)
+.fact_cache/
+fact_cache/
+
+# Ansible log files (if logging is enabled)
+ansible.log
+*.log
+server_update.yml
+
+# ─────────────────────────────────────────────
+# Python / Virtualenv (common for tooling)
+# ─────────────────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.env
+.venv/
+venv/
+
+# Pipenv / Poetry
+Pipfile.lock
+poetry.lock
+
+# ─────────────────────────────────────────────
+# OS-generated junk
+# ─────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ─────────────────────────────────────────────
+# Editor / IDE files
+# ─────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ─────────────────────────────────────────────
+# Build + Packaging
+# ─────────────────────────────────────────────
+*.zip
+dist/
+build/
+tmp/
+temp/
+.cache/
+
+# ─────────────────────────────────────────────
+# Terraform (common in infra repos)
+# ─────────────────────────────────────────────
+.terraform/
+*.tfstate
+*.tfstate.backup
+
+# ─────────────────────────────────────────────
+# AWS CLI / Credentials (MANDATORY to ignore)
+# ─────────────────────────────────────────────
+.aws/
+credentials
+config
+
