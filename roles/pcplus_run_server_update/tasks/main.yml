@@ -35,7 +35,7 @@
       ansible.builtin.command: >
         aws s3 ls
         s3://{{ pcplus_run_server_update_pcplus_bucket }}/pcplus/{{ pcplus_run_server_update_pcplus_quarter }}/data/
-      register: pcplus_s3_check
+      register: pcplus_run_server_update_pcplus_s3_check
       changed_when: false
       failed_when: false
 
@@ -44,7 +44,7 @@
         aws s3 cp --recursive
         s3://{{ pcplus_run_server_update_pcplus_bucket }}/pcplus/{{ pcplus_run_server_update_pcplus_quarter }}/data/
         {{ pcplus_run_server_update_pcplus_dir }}/{{ pcplus_run_server_update_pcplus_new_dir }}
-      register: pcplus_copy_data
+      register: pcplus_run_server_update_pcplus_copy_data
       retries: 3
       delay: 5
       until: pcplus_copy_data.rc == 0
@@ -72,14 +72,14 @@
 - name: Stat current data directory
   ansible.builtin.stat:
     path: "{{ pcplus_run_server_update_pcplus_dir }}/data"
-  register: pcplus_current_data
+  register: pcplus_run_server_update_pcplus_current_data
   become: true
 
 
 - name: Stat old backup nested data directory
   ansible.builtin.stat:
     path: "{{ pcplus_run_server_update_pcplus_dir }}/{{ pcplus_run_server_update_pcplus_old_dir }}/data"
-  register: pcplus_old_nested_data
+  register: pcplus_run_server_update_pcplus_old_nested_data
   become: true
 
 - name: Ensure old backup nested data directory is absent
@@ -98,7 +98,7 @@
       ansible.builtin.command: >
         mv "{{ pcplus_run_server_update_pcplus_dir }}/data"
            "{{ pcplus_run_server_update_pcplus_dir }}/{{ pcplus_run_server_update_pcplus_old_dir }}"
-      register: backup_mv
+      register: pcplus_run_server_update_backup_mv
       when:
         - pcplus_current_data.stat.exists
         - pcplus_current_data.stat.isdir

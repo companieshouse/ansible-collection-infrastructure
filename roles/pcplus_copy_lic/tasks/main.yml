@@ -5,7 +5,7 @@
       ansible.builtin.command: >
         aws s3 ls
         s3://{{ pcplus_copy_lic_pcplus_bucket }}/pcplus/pcplus.lic
-      register: pcplus_lic_s3_check
+      register: pcplus_copy_lic_pcplus_lic_s3_check
       changed_when: false
       failed_when: false
 
@@ -14,7 +14,7 @@
         aws s3 cp
         s3://{{ pcplus_copy_lic_pcplus_bucket }}/pcplus/pcplus.lic
         {{ pcplus_copy_lic_pcplus_dir }}/data/pcplus.lic
-      register: pcplus_copy_lic
+      register: pcplus_copy_lic_pcplus_copy_lic
       retries: 3
       delay: 5
       until: pcplus_copy_lic.rc == 0
