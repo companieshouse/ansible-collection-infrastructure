@@ -1,0 +1,57 @@
+---
+argument_specs:
+  main:
+    short_description: Configure an Amazon FSx for ONTAP file system.
+    description:
+      - Configures DNS on the SVM, requires encryption for SVM-to-DC
+        connections, joins the CIFS server to Active Directory, and
+        provisions domain admin users with the fsxadmin role.
+    options:
+      storage_fsx_configure_netapp_hostname:
+        type: str
+        required: true
+        description: FSx management endpoint hostname (the ONTAP REST API).
+      storage_fsx_configure_netapp_username:
+        type: str
+        required: true
+        description: fsxadmin username for the cluster.
+      storage_fsx_configure_netapp_password:
+        type: str
+        required: true
+        no_log: true
+        description: fsxadmin password for the cluster.
+      storage_fsx_configure_vserver:
+        type: str
+        required: true
+        description: Name of the storage VM to configure.
+      storage_fsx_configure_cifs_server_name:
+        type: str
+        required: true
+        description: NetBIOS-style name for the CIFS computer object in AD.
+      storage_fsx_configure_cifs_domain:
+        type: str
+        required: true
+        description: Active Directory domain to join.
+      storage_fsx_configure_dns_servers:
+        type: list
+        elements: str
+        required: true
+        description: DNS servers for the SVM. Must be non-empty.
+      storage_fsx_configure_dc_admin_user_name:
+        type: str
+        required: true
+        description: AD account with rights to join computers to the domain.
+      storage_fsx_configure_dc_admin_password:
+        type: str
+        required: true
+        no_log: true
+        description: Password for the AD join account.
+      storage_fsx_configure_dc_ou:
+        type: str
+        required: true
+        description: Distinguished name of the OU where the CIFS computer object lives.
+      storage_fsx_configure_fsx_domain_admins:
+        type: list
+        elements: str
+        required: true
+        description: Domain usernames (sAMAccountName) to grant the fsxadmin role.

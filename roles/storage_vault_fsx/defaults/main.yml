@@ -1,0 +1,9 @@
+---
+# Role inputs (must be supplied by the caller, typically via the playbook):
+#   storage_vault_fsx_aws_profile - the AWS profile/account name, e.g. my-dev-dev-eu-west-1
+#   storage_vault_fsx_fsx_name    - the FSx filesystem name, e.g. nfs-fsx
+storage_vault_fsx_aws_profile: null
+storage_vault_fsx_fsx_name: null
+
+# Built from the above vars
+storage_vault_fsx_vault_base_path: "/applications/{{ storage_vault_fsx_aws_profile }}/amzfsx/{{ storage_vault_fsx_fsx_name }}"

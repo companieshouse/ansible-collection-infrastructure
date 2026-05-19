@@ -1,0 +1,69 @@
+---
+- name: Configure domain tunnel for AD authentication
+  netapp.ontap.na_ontap_domain_tunnel:
+    state: present
+    vserver: "{{ storage_fsx_configure_vserver }}"
+
+- name: Get current security login users
+  netapp.ontap.na_ontap_rest_info:
+    gather_subset:
+      - security/accounts
+    fields:
+      - name
+      - applications
+      - role
+      - scope
+  register: storage_fsx_configure_security_logins
+
+- name: Build set of currently-configured domain admins
+  ansible.builtin.set_fact:
+    storage_fsx_configure_current_domain_admins: >-
+      {{ storage_fsx_configure_security_logins.ontap_info['security/accounts'].records
+         | selectattr('scope', 'equalto', 'cluster')
+         | map(attribute='name')
+         | select('search', backslash)
+         | map('regex_replace', '^[^' ~ backslash ~ ']+' ~ backslash, '')
+         | map('lower')
+         | list }}
+  vars:
+    backslash: '{{ "\\" }}'
+
+- name: Determine which admins to add and remove
+  ansible.builtin.set_fact:
+    storage_fsx_configure_admins_to_add: >-
+      {{ (storage_fsx_configure_fsx_domain_admins | map('lower') | list)
+         | difference(storage_fsx_configure_current_domain_admins) }}
+    storage_fsx_configure_admins_to_remove: >-
+      {{ storage_fsx_configure_current_domain_admins
+         | difference(storage_fsx_configure_fsx_domain_admins | map('lower') | list) }}
+
+- name: Show users diff
+  ansible.builtin.debug:
+    msg:
+      current: "{{ storage_fsx_configure_current_domain_admins }}"
+      desired: "{{ storage_fsx_configure_fsx_domain_admins }}"
+      to_add: "{{ storage_fsx_configure_admins_to_add }}"
+      to_remove: "{{ storage_fsx_configure_admins_to_remove }}"
+
+- name: Add new domain admin users
+  netapp.ontap.na_ontap_user:
+    state: present
+    name: "{{ storage_fsx_configure_cifs_domain }}\\{{ item }}"
+    vserver: "{{ storage_fsx_configure_cluster_name }}"
+    applications: ssh
+    authentication_method: domain
+    role_name: fsxadmin
+  loop: "{{ storage_fsx_configure_admins_to_add }}"
+  loop_control:
+    label: "{{ item }}"
+
+- name: Remove domain admin users no longer in the desired list
+  netapp.ontap.na_ontap_user:
+    state: absent
+    name: "{{ storage_fsx_configure_cifs_domain }}\\{{ item }}"
+    vserver: "{{ storage_fsx_configure_cluster_name }}"
+    applications: ssh
+    authentication_method: domain
+  loop: "{{ storage_fsx_configure_admins_to_remove }}"
+  loop_control:
+    label: "{{ item }}"

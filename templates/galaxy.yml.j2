@@ -1,0 +1,16 @@
+namespace: "companieshouse"
+name: "infrastructure"
+version: "{{ version }}"
+readme: "README.md"
+authors:
+  - "ls-comh"
+description: "An Ansible Galaxy collection comprising Ansible roles that configure infrastructure used at Companies House projects."
+license_file: "LICENSE"
+tags:
+  - storage
+dependencies:
+  "netapp.ontap": ">=22.14.0"
+  "community.hashi_vault": ">=6.2.0,<7.0.0"
+
+build_ignore:
+  - templates

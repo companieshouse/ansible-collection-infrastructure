@@ -1,0 +1,16 @@
+---
+- name: Configure DNS on the SVM
+  ansible.builtin.import_tasks: 1_dns.yml
+  tags: [dns]
+
+- name: Join the SVM CIFS server to Active Directory
+  ansible.builtin.import_tasks: 2_cifs.yml
+  tags: [cifs, ad]
+
+- name: Gather cluster facts (needed by domain admin provisioning)
+  ansible.builtin.import_tasks: 3_cluster-info.yml
+  tags: [cluster-info, domain-admins]
+
+- name: Provision domain admin users with the fsxadmin role
+  ansible.builtin.import_tasks: 4_domain-admins.yml
+  tags: [domain-admins]
