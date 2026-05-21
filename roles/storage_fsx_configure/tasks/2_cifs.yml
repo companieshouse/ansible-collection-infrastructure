@@ -1,0 +1,56 @@
+---
+- name: Get current CIFS security settings
+  netapp.ontap.na_ontap_rest_cli:
+    command: "vserver/cifs/security"
+    verb: GET
+    params:
+      vserver: "{{ storage_fsx_configure_vserver }}"
+      fields: "encryption_required_for_dc_connections"
+  register: storage_fsx_configure_cifs_security_current
+
+- name: Require encryption for SVM-to-DC connections
+  netapp.ontap.na_ontap_rest_cli:
+    command: "vserver/cifs/security"
+    verb: PATCH
+    params:
+      vserver: "{{ storage_fsx_configure_vserver }}"
+    body:
+      encryption_required_for_dc_connections: true
+  when: >-
+    storage_fsx_configure_cifs_security_current.msg.records | default([]) | length == 0
+    or not (storage_fsx_configure_cifs_security_current.msg.records[0].encryption_required_for_dc_connections | bool)
+
+- name: Check existing CIFS server config
+  netapp.ontap.na_ontap_rest_info:
+    gather_subset:
+      - protocols/cifs/services
+    fields:
+      - name
+      - svm
+  register: storage_fsx_configure_cifs_current
+
+- name: Fail loudly if CIFS server name is being changed
+  ansible.builtin.assert:
+    that:
+      - not existing_name or existing_name == storage_fsx_configure_cifs_server_name
+    fail_msg: >-
+      CIFS server already exists as '{{ existing_name }}' on SVM '{{ storage_fsx_configure_vserver }}'
+      but config requests '{{ storage_fsx_configure_cifs_server_name }}'. Renames require manual AD
+      cleanup of the old computer object. See runbook before proceeding.
+  vars:
+    _matching_servers: >-
+      {{ storage_fsx_configure_cifs_current.ontap_info['protocols/cifs/services'].records
+         | selectattr('svm.name', 'equalto', storage_fsx_configure_vserver)
+         | map(attribute='name') | list }}
+    existing_name: "{{ _matching_servers[0] if _matching_servers else '' }}"
+
+- name: Create CIFS server and join to Active Directory
+  netapp.ontap.na_ontap_cifs_server:
+    vserver: "{{ storage_fsx_configure_vserver }}"
+    name: "{{ storage_fsx_configure_cifs_server_name }}"
+    domain: "{{ storage_fsx_configure_cifs_domain }}"
+    ou: "{{ storage_fsx_configure_dc_ou }}"
+    admin_user_name: "{{ storage_fsx_configure_dc_admin_user_name }}"
+    admin_password: "{{ storage_fsx_configure_dc_admin_password }}"
+    encrypt_dc_connection: true
+    force: true

@@ -1,0 +1,13 @@
+---
+- name: Assert dns_servers is non-empty
+  ansible.builtin.assert:
+    that:
+      - storage_fsx_configure_dns_servers | length > 0
+    fail_msg: "storage_fsx_configure_dns_servers must contain at least one nameserver."
+
+- name: Configure DNS servers on the SVM
+  netapp.ontap.na_ontap_dns:
+    vserver: "{{ storage_fsx_configure_vserver }}"
+    domains: "{{ storage_fsx_configure_cifs_domain }}"
+    nameservers: "{{ storage_fsx_configure_dns_servers }}"
+    skip_validation: true

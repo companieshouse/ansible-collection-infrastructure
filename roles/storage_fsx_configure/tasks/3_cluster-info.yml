@@ -1,0 +1,26 @@
+---
+- name: Gather cluster info from ONTAP
+  netapp.ontap.na_ontap_rest_info:
+    gather_subset:
+      - cluster
+    fields:
+      - name
+  register: storage_fsx_configure_cluster_info
+
+- name: Show raw cluster data (verbose only)
+  ansible.builtin.debug:
+    var: storage_fsx_configure_cluster_info.ontap_info
+    verbosity: 1
+
+- name: Set cluster_name fact
+  ansible.builtin.set_fact:
+    storage_fsx_configure_cluster_name: "{{ storage_fsx_configure_cluster_info.ontap_info.cluster.name }}"
+
+- name: Assert cluster name was returned
+  ansible.builtin.assert:
+    that:
+      - storage_fsx_configure_cluster_name is defined
+      - storage_fsx_configure_cluster_name | length > 0
+    fail_msg: >-
+      ONTAP REST gather_subset=cluster did not return a cluster name.
+      Check the FSx management endpoint is reachable and credentials are valid.
