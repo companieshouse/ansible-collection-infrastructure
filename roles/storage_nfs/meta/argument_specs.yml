@@ -1,0 +1,50 @@
+---
+argument_specs:
+  main:
+    short_description: Setup NFS tools and mount one or more NFS exports.
+    description:
+      - Installs NFS client utilities and mounts one or more NFS exports,
+        creating mount point directories, updating `/etc/fstab`,
+        and mounting exports.
+    options:
+      storage_nfs_mounts:
+        type: list
+        elements: dict
+        required: true
+        description: List of NFS mounts to configure; cannot be empty.
+        options:
+          server:
+            type: str
+            required: true
+            description: NFS server hostname or IP.
+          export_path:
+            type: str
+            required: true
+            description: Path of the export on the NFS server.
+          mount_point:
+            type: str
+            required: true
+            description: Local path to mount the export at.
+          owner:
+            type: str
+            required: false
+            default: root
+            description: Owner of the mount point directory.
+          group:
+            type: str
+            required: false
+            default: root
+            description: Group of the mount point directory.
+          mode:
+            type: str
+            required: false
+            default: "0755"
+            description: Mode of the mount point directory.
+          opts:
+            type: str
+            required: false
+            default: "defaults,_netdev"
+            description: >-
+              NFS mount options passed to mount(8). Default includes _netdev
+              so the mount waits for the network and a missing server does
+              not block boot.

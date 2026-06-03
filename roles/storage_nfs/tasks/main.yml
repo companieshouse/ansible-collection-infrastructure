@@ -1,0 +1,53 @@
+---
+- name: Assert at least one NFS mount has been provided
+  ansible.builtin.assert:
+    that:
+      - storage_nfs_mounts | length > 0
+    fail_msg: "storage_nfs_mounts must contain at least one mount definition."
+  tags: [mount]
+
+- name: Assert this is a RHEL-compatible host
+  ansible.builtin.assert:
+    that:
+      - ansible_os_family == "RedHat"
+    fail_msg: >-
+      storage_nfs currently only intended for use on RHEL-family hosts
+      (detected ansible_os_family='{{ ansible_os_family | default("unknown") }}').
+  tags: [install, mount]
+
+- name: Install NFS utilities
+  ansible.builtin.package:
+    name: nfs-utils
+    state: present
+  tags: [install]
+
+- name: Enable and start rpcbind service
+  ansible.builtin.systemd:
+    name: rpcbind
+    enabled: true
+    state: started
+  tags: [install]
+
+- name: Ensure mount point directories exist
+  ansible.builtin.file:
+    path: "{{ item.mount_point }}"
+    state: directory
+    owner: "{{ item.owner | default('root') }}"
+    group: "{{ item.group | default('root') }}"
+    mode: "{{ item.mode | default('0755') }}"
+  loop: "{{ storage_nfs_mounts }}"
+  loop_control:
+    label: "{{ item.mount_point }}"
+  tags: [mount]
+
+- name: Configure NFS mounts in fstab and mount them
+  ansible.posix.mount:
+    path: "{{ item.mount_point }}"
+    src: "{{ item.server }}:{{ item.export_path }}"
+    fstype: nfs
+    opts: "{{ item.opts | default('defaults,_netdev') }}"
+    state: mounted
+  loop: "{{ storage_nfs_mounts }}"
+  loop_control:
+    label: "{{ item.server }}:{{ item.export_path }} -> {{ item.mount_point }}"
+  tags: [mount]

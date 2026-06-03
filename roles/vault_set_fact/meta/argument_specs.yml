@@ -1,0 +1,27 @@
+---
+argument_specs:
+  main:
+    short_description: Fetches a HashiCorp Vault secret path and exposes its contents as Ansible facts
+    description:
+      - Fetches a HashiCorp Vault secret path and exposes its contents as
+        Ansible facts.
+      - Lookups use `no_log` to avoid secrets appearing in output.
+      - Subsequent tasks and roles can make use of individual fields, using
+        the format `{{ <fact_name>.<field> }}`.
+      - In the event you need to fetch multiple paths, re-use this role with
+        different `vault_set_fact_path`s and `vault_set_fact_name`s.
+    options:
+      vault_set_fact_path:
+        type: str
+        required: true
+        description: Vault KV2 path
+      vault_set_fact_name:
+        type: str
+        required: true
+        description: Chosen name to register as the Ansible fact
+      vault_set_fact_skip_env_check:
+        type: bool
+        required: false
+        default: false
+        description: >-
+          Skip AppRole checks

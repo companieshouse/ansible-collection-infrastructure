@@ -1,0 +1,16 @@
+---
+storage_lvm_debugging_enabled: false
+
+storage_lvm_aws_region: eu-west-2
+
+# Filesystem | per-mount
+storage_lvm_fstype: xfs
+storage_lvm_mount_opts: "defaults,nofail"
+
+# LVM | per-mount
+storage_lvm_pe_size: 4
+
+# Mount | per-mount
+storage_lvm_mount_mode: "0755"
+storage_lvm_mount_owner: root
+storage_lvm_mount_group: root

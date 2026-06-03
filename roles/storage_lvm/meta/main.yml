@@ -1,0 +1,9 @@
+---
+galaxy_info:
+  standalone: false
+  role_name: storage_lvm
+  author: ls-comh
+  description: Provision LVM-backed mount points on an EC2 host using EBS Purpose tags.
+  company: Companies House
+  license: MIT
+dependencies: []
