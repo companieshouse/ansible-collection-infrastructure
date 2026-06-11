@@ -29,14 +29,14 @@
       - svm
   register: storage_fsx_configure_cifs_current
 
-- name: Fail loudly if CIFS server name is being changed
+- name: Fail if the CIFS server already exists under a different name (ignoring case)
   ansible.builtin.assert:
     that:
-      - not existing_name or existing_name == storage_fsx_configure_cifs_server_name
+      - not existing_name or existing_name | lower == storage_fsx_configure_cifs_server_name | lower
     fail_msg: >-
       CIFS server already exists as '{{ existing_name }}' on SVM '{{ storage_fsx_configure_vserver }}'
       but config requests '{{ storage_fsx_configure_cifs_server_name }}'. Renames require manual AD
-      cleanup of the old computer object. See runbook before proceeding.
+      cleanup of the old computer object.
   vars:
     _matching_servers: >-
       {{ storage_fsx_configure_cifs_current.ontap_info['protocols/cifs/services'].records

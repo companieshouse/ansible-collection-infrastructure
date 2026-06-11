@@ -23,15 +23,16 @@ AppRole requires the following:
 - `ANSIBLE_HASHI_VAULT_ROLE_ID`
 - `ANSIBLE_HASHI_VAULT_SECRET_ID`
 
-To skip checks, set `vault_set_fact_skip_env_check` to `true`.
+To skip this presence check (auth itself still requires the vars), set
+`vault_set_fact_skip_env_check` to `true`.
 
 ## Variables
 
 | Variable | Required | Default | Description |
 |---|---|---|---|
 | `vault_set_fact_path` | yes | — | Vault KV2 path |
-| `vault_set_fact_name` | yes | — | Chosen name to register as the Ansible fact |
-| `vault_set_fact_skip_env_check` | no | `false` | Skip AppRole checks |
+| `vault_set_fact_name` | yes | — | Name to register as the Ansible fact. Must be a valid identifier (letters, digits, underscores; not starting with a digit) |
+| `vault_set_fact_skip_env_check` | no | `false` | Skip the env var presence assertion. Auth still requires the vars; useful when a caller validates them once up-front |
 
 ## Usage
 

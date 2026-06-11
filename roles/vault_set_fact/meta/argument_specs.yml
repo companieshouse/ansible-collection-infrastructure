@@ -18,10 +18,15 @@ argument_specs:
       vault_set_fact_name:
         type: str
         required: true
-        description: Chosen name to register as the Ansible fact
+        description: >-
+          Chosen name to register as the Ansible fact. Must be a valid
+          identifier (letters, digits, underscores; not starting with a
+          digit) so the fact can be referenced in templates.
       vault_set_fact_skip_env_check:
         type: bool
         required: false
         default: false
         description: >-
-          Skip AppRole checks
+          Skip the assertion that the ANSIBLE_HASHI_VAULT_* environment
+          variables are set. Authentication still occurs and still requires
+          them; use this when a calling role has already validated them.

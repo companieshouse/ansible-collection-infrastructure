@@ -22,5 +22,5 @@
       - storage_fsx_configure_cluster_name is defined
       - storage_fsx_configure_cluster_name | length > 0
     fail_msg: >-
-      ONTAP REST gather_subset=cluster did not return a cluster name.
-      Check the FSx management endpoint is reachable and credentials are valid.
+      ONTAP REST gather_subset=cluster did not return a cluster name
+      Check the FSx management endpoint is reachable and credentials are valid

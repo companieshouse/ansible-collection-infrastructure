@@ -7,7 +7,7 @@
   ansible.builtin.import_tasks: 2_cifs.yml
   tags: [cifs, ad]
 
-- name: Gather cluster facts (needed by domain admin provisioning)
+- name: Gather cluster facts
   ansible.builtin.import_tasks: 3_cluster-info.yml
   tags: [cluster-info, domain-admins]
 
