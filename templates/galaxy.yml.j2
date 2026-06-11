@@ -4,13 +4,18 @@ version: "{{ version }}"
 readme: "README.md"
 authors:
   - "ls-comh"
-description: "An Ansible Galaxy collection comprising Ansible roles that configure infrastructure used at Companies House projects."
+description: "A collection of Ansible roles used frequently in Companies House infrastructure projects."
 license_file: "LICENSE"
 tags:
   - storage
+  - linux
+  - aws
 dependencies:
-  "netapp.ontap": ">=22.14.0"
+  "ansible.posix": ">=1.5.4"
+  "community.general": ">=8.0.0"
   "community.hashi_vault": ">=6.2.0,<7.0.0"
+  "netapp.ontap": ">=22.14.0"
 
+repository: "https://github.com/companieshouse/ansible-collection-infrastructure"
 build_ignore:
   - templates

@@ -1,0 +1,9 @@
+---
+galaxy_info:
+  standalone: false
+  role_name: vault_set_fact
+  author: ls-comh
+  description: Fetches a HashiCorp Vault secret path and exposes its contents as Ansible facts.
+  company: Companies House
+  license: MIT
+dependencies: []

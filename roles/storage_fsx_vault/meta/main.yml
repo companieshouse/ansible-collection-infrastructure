@@ -1,0 +1,9 @@
+---
+galaxy_info:
+  standalone: false
+  role_name: storage_fsx_vault
+  author: ls-comh
+  description: Loads FSx variables from HashiCorp Vault and sets them as facts.
+  company: Companies House
+  license: MIT
+dependencies: []

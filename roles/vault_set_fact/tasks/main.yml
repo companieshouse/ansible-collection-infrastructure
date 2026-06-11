@@ -1,0 +1,50 @@
+---
+- name: Validate role inputs are set
+  ansible.builtin.assert:
+    that:
+      - lookup('vars', item, default='') | string | trim | length > 0
+    fail_msg: "'{{ item }}' must be set."
+  loop:
+    - vault_set_fact_path
+    - vault_set_fact_name
+  loop_control:
+    label: "{{ item }}"
+
+- name: Validate fact name is a legal Ansible identifier
+  ansible.builtin.assert:
+    that:
+      - vault_set_fact_name is match('^[a-zA-Z_][a-zA-Z0-9_]*$')
+    fail_msg: >-
+      'vault_set_fact_name' must be a valid identifier (letters, digits,
+      underscores; not starting with a digit). Got: '{{ vault_set_fact_name }}'
+
+- name: Assert Vault AppRole auth env vars are present
+  ansible.builtin.assert:
+    that:
+      - lookup('env', item) | length > 0
+    fail_msg: >-
+      Environment variable '{{ item }}' is not set. Vault AppRole
+      authentication requires ANSIBLE_HASHI_VAULT_ADDR,
+      ANSIBLE_HASHI_VAULT_ROLE_ID, and ANSIBLE_HASHI_VAULT_SECRET_ID
+      to be exported.
+  loop:
+    - ANSIBLE_HASHI_VAULT_ADDR
+    - ANSIBLE_HASHI_VAULT_ROLE_ID
+    - ANSIBLE_HASHI_VAULT_SECRET_ID
+  loop_control:
+    label: "{{ item }}"
+  when: not vault_set_fact_skip_env_check
+
+- name: Fetch Vault secret and register as fact
+  ansible.builtin.set_fact:
+    "{{ vault_set_fact_name }}": "{{ lookup('community.hashi_vault.vault_kv2_get', vault_set_fact_path).secret }}"
+  no_log: true
+
+- name: Assert fetched secret is non-empty
+  ansible.builtin.assert:
+    that:
+      - lookup('vars', vault_set_fact_name) is mapping
+      - lookup('vars', vault_set_fact_name) | length > 0
+    fail_msg: >-
+      Vault returned no fields for '{{ vault_set_fact_path }}'. Check the
+      path exists, has data, and that the AppRole policy grants read access.

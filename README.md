@@ -1,10 +1,13 @@
 # ansible-collection-infrastructure
-An Ansible Galaxy collection comprising Ansible roles that configure infrastructure used at Companies House projects.
+A collection of Ansible roles used frequently in Companies House infrastructure projects.
 
 ## Requirements
-python3 packages:
-requests
-netapp-lib
+
+Python packages (on the control node, for the FSx roles):
+- `requests`
+- `netapp-lib`
+
+See individual role READMEs for per-role requirements.
 
 ## Authors
 - [ls-comh](https://github.com/ls-comh)

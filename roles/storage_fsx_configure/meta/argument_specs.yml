@@ -1,11 +1,10 @@
 ---
 argument_specs:
   main:
-    short_description: Configure an Amazon FSx for ONTAP file system.
+    short_description: Configures an Amazon FSx (NetApp ONTAP) file system
     description:
-      - Configures DNS on the SVM, requires encryption for SVM-to-DC
-        connections, joins the CIFS server to Active Directory, and
-        provisions domain admin users with the fsxadmin role.
+      - Configures DNS on the SVM (requires encryption for SVM-to-DC),
+        joins the CIFS server to Active Directory, and provisions admins.
     options:
       storage_fsx_configure_netapp_hostname:
         type: str
@@ -50,7 +49,7 @@ argument_specs:
         type: str
         required: true
         description: Distinguished name of the OU where the CIFS computer object lives.
-      storage_fsx_configure_fsx_domain_admins:
+      storage_fsx_configure_domain_admins:
         type: list
         elements: str
         required: true

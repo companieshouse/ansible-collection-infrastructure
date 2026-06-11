@@ -1,0 +1,89 @@
+---
+- name: Validate storage_fsx_vault_base_path is set
+  ansible.builtin.assert:
+    that:
+      - storage_fsx_vault_base_path | string | trim | length > 0
+    fail_msg: >-
+      'storage_fsx_vault_base_path' must be set.
+
+- name: Assert Vault AppRole auth env vars are present
+  ansible.builtin.assert:
+    that:
+      - lookup('env', item) | length > 0
+    fail_msg: >-
+      Environment variable '{{ item }}' must be set.
+  loop:
+    - ANSIBLE_HASHI_VAULT_ADDR
+    - ANSIBLE_HASHI_VAULT_ROLE_ID
+    - ANSIBLE_HASHI_VAULT_SECRET_ID
+  loop_control:
+    label: "{{ item }}"
+
+- name: Fetch /configs from Vault
+  ansible.builtin.include_role:
+    name: companieshouse.infrastructure.vault_set_fact
+  vars:
+    vault_set_fact_path: "{{ storage_fsx_vault_base_path }}/configs"
+    vault_set_fact_name: "storage_fsx_vault_configs"
+    vault_set_fact_skip_env_check: true
+
+- name: Set /configs facts
+  ansible.builtin.set_fact:
+    storage_fsx_vault_netapp_hostname: "{{ storage_fsx_vault_configs.netapp_hostname }}"
+    storage_fsx_vault_cifs_server_name: "{{ storage_fsx_vault_configs.cifs_server_name }}"
+    storage_fsx_vault_dns_servers: "{{ storage_fsx_vault_configs.dns_servers }}"
+    storage_fsx_vault_vserver: "{{ storage_fsx_vault_configs.vserver }}"
+    storage_fsx_vault_cifs_domain: "{{ storage_fsx_vault_configs.cifs_domain }}"
+    storage_fsx_vault_dc_ou: "{{ storage_fsx_vault_configs.dc_ou }}"
+  no_log: true
+
+- name: Assert dns_servers is a native non-empty list
+  ansible.builtin.assert:
+    that:
+      - storage_fsx_vault_dns_servers is sequence
+      - storage_fsx_vault_dns_servers is not string
+      - storage_fsx_vault_dns_servers is not mapping
+      - storage_fsx_vault_dns_servers | length > 0
+    fail_msg: >-
+      'dns_servers' at '{{ storage_fsx_vault_base_path }}/configs' must be
+      stored in Vault as a native, non-empty list, not a JSON-encoded string.
+
+- name: Fetch /credentials from Vault
+  ansible.builtin.include_role:
+    name: companieshouse.infrastructure.vault_set_fact
+  vars:
+    vault_set_fact_path: "{{ storage_fsx_vault_base_path }}/credentials"
+    vault_set_fact_name: "storage_fsx_vault_credentials"
+    vault_set_fact_skip_env_check: true
+
+- name: Set /credentials facts
+  ansible.builtin.set_fact:
+    storage_fsx_vault_fsxadmin_username: "{{ storage_fsx_vault_credentials.fsxadmin_username }}"
+    storage_fsx_vault_fsxadmin_password: "{{ storage_fsx_vault_credentials.fsxadmin_password }}"
+    storage_fsx_vault_ad_join_username: "{{ storage_fsx_vault_credentials.ad_join_username }}"
+    storage_fsx_vault_ad_join_password: "{{ storage_fsx_vault_credentials.ad_join_password }}"
+  no_log: true
+
+- name: Fetch /admins from Vault
+  ansible.builtin.include_role:
+    name: companieshouse.infrastructure.vault_set_fact
+  vars:
+    vault_set_fact_path: "{{ storage_fsx_vault_base_path }}/admins"
+    vault_set_fact_name: "storage_fsx_vault_admins"
+    vault_set_fact_skip_env_check: true
+
+- name: Set /admins fact
+  ansible.builtin.set_fact:
+    storage_fsx_vault_domain_admins: "{{ storage_fsx_vault_admins.domain_admins }}"
+  no_log: true
+
+- name: Assert domain_admins is a native non-empty list
+  ansible.builtin.assert:
+    that:
+      - storage_fsx_vault_domain_admins is sequence
+      - storage_fsx_vault_domain_admins is not string
+      - storage_fsx_vault_domain_admins is not mapping
+      - storage_fsx_vault_domain_admins | length > 0
+    fail_msg: >-
+      'domain_admins' at '{{ storage_fsx_vault_base_path }}/admins' must be
+      stored in Vault as a native, non-empty list, not a JSON-encoded string.
