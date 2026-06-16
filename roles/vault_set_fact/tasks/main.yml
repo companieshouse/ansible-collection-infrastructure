@@ -37,13 +37,13 @@
 
 - name: Fetch Vault secret and register as fact (KV1)
   ansible.builtin.set_fact:
-    "{{ vault_set_fact_name }}": "{{ lookup('community.hashi_vault.vault_kv1_get', vault_set_fact_path).secret }}"
+    "{{ vault_set_fact_name }}": "{{ lookup('community.hashi_vault.vault_kv1_get', vault_set_fact_path, engine_mount_point=vault_set_fact_engine_mount_point).secret }}"
   no_log: true
   when: vault_set_fact_engine_version | int == 1
 
 - name: Fetch Vault secret and register as fact (KV2)
   ansible.builtin.set_fact:
-    "{{ vault_set_fact_name }}": "{{ lookup('community.hashi_vault.vault_kv2_get', vault_set_fact_path).secret }}"
+    "{{ vault_set_fact_name }}": "{{ lookup('community.hashi_vault.vault_kv2_get', vault_set_fact_path, engine_mount_point=vault_set_fact_engine_mount_point).secret }}"
   no_log: true
   when: vault_set_fact_engine_version | int == 2
 

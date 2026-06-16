@@ -1,2 +1,3 @@
 ---
 storage_fsx_vault_engine_version: 1
+storage_fsx_vault_engine_mount_point: "kv"
