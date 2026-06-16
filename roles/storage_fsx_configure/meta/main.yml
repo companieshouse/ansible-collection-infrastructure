@@ -1,0 +1,9 @@
+---
+galaxy_info:
+  standalone: false
+  role_name: storage_fsx_configure
+  author: ls-comh
+  description: Configures an Amazon FSx (NetApp ONTAP) file system
+  company: Companies House
+  license: MIT
+dependencies: []
