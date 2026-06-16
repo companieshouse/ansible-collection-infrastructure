@@ -21,7 +21,12 @@ AppRole authentication requires the following to run:
 
 ## Variables and Layout
 
-`storage_fsx_vault_base_path` must be provided, and contain:
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `storage_fsx_vault_base_path` | yes | — | Base path which contains `/configs`, `/credentials`, and `/admins` |
+| `storage_fsx_vault_engine_version` | no | `1` | KV secrets engine version (`1` or `2`) |
+
+`storage_fsx_vault_base_path` must contain:
 
 | Path | Fields |
 |---|---|
@@ -86,6 +91,16 @@ the vars should be mapped across:
         storage_fsx_configure_dc_admin_password: "{{ storage_fsx_vault_ad_join_password }}"
         storage_fsx_configure_dc_ou: "{{ storage_fsx_vault_dc_ou }}"
         storage_fsx_configure_domain_admins: "{{ storage_fsx_vault_domain_admins }}"
+```
+
+If secrets are stored on a KV2 mount, set the version explicitly:
+
+```yaml
+    - role: companieshouse.infrastructure.storage_fsx_vault
+      tags: [vault]
+      vars:
+        storage_fsx_vault_base_path: "secret/myproject/fsx/myfilesystem"
+        storage_fsx_vault_engine_version: 2
 ```
 
 If you're providing local vars to `storage_fsx_configure` (e.g.

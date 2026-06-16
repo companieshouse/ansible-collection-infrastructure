@@ -13,3 +13,10 @@ argument_specs:
         required: true
         description: >-
           Base path which contains /configs, /credentials, and /admins
+      storage_fsx_vault_engine_version:
+        type: int
+        required: false
+        default: 1
+        choices: [1, 2]
+        description: >-
+          KV secrets engine version (1 or 2)

@@ -25,6 +25,7 @@
   vars:
     vault_set_fact_path: "{{ storage_fsx_vault_base_path }}/configs"
     vault_set_fact_name: "storage_fsx_vault_configs"
+    vault_set_fact_engine_version: "{{ storage_fsx_vault_engine_version }}"
     vault_set_fact_skip_env_check: true
 
 - name: Set /configs facts
@@ -54,6 +55,7 @@
   vars:
     vault_set_fact_path: "{{ storage_fsx_vault_base_path }}/credentials"
     vault_set_fact_name: "storage_fsx_vault_credentials"
+    vault_set_fact_engine_version: "{{ storage_fsx_vault_engine_version }}"
     vault_set_fact_skip_env_check: true
 
 - name: Set /credentials facts
@@ -70,6 +72,7 @@
   vars:
     vault_set_fact_path: "{{ storage_fsx_vault_base_path }}/admins"
     vault_set_fact_name: "storage_fsx_vault_admins"
+    vault_set_fact_engine_version: "{{ storage_fsx_vault_engine_version }}"
     vault_set_fact_skip_env_check: true
 
 - name: Set /admins fact
