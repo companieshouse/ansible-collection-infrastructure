@@ -30,8 +30,9 @@ To skip this presence check (auth itself still requires the vars), set
 
 | Variable | Required | Default | Description |
 |---|---|---|---|
-| `vault_set_fact_path` | yes | — | Vault KV2 path |
+| `vault_set_fact_path` | yes | — | Vault KV secret path |
 | `vault_set_fact_name` | yes | — | Name to register as the Ansible fact. Must be a valid identifier (letters, digits, underscores; not starting with a digit) |
+| `vault_set_fact_engine_version` | no | `1` | KV secrets engine version (`1` or `2`) |
 | `vault_set_fact_skip_env_check` | no | `false` | Skip the env var presence assertion. Auth still requires the vars; useful when a caller validates them once up-front |
 
 ## Usage
@@ -45,6 +46,7 @@ To skip this presence check (auth itself still requires the vars), set
       vars:
         vault_set_fact_path: "secret/app-env/database"
         vault_set_fact_name: "app_env_database"
+        vault_set_fact_engine_version: 2 # defaults to 1
   tasks:
     - name: Use Database Secrets
       ansible.builtin.debug:

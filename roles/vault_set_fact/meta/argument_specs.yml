@@ -14,7 +14,7 @@ argument_specs:
       vault_set_fact_path:
         type: str
         required: true
-        description: Vault KV2 path
+        description: Vault KV secret path
       vault_set_fact_name:
         type: str
         required: true
@@ -22,6 +22,13 @@ argument_specs:
           Chosen name to register as the Ansible fact. Must be a valid
           identifier (letters, digits, underscores; not starting with a
           digit) so the fact can be referenced in templates.
+      vault_set_fact_engine_version:
+        type: int
+        required: false
+        default: 1
+        choices: [1, 2]
+        description: >-
+          KV secrets engine version (`1` or `2`)
       vault_set_fact_skip_env_check:
         type: bool
         required: false
