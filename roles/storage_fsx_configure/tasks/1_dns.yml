@@ -5,6 +5,21 @@
       - storage_fsx_configure_dns_servers | length > 0
     fail_msg: "storage_fsx_configure_dns_servers must contain at least one nameserver."
 
+- name: Test connectivity to FSx management endpoint
+  ansible.builtin.uri:
+    url: "https://{{ netapp_hostname }}/api/cluster"
+    user: "{{ username }}"
+    password: "{{ password }}"
+    validate_certs: false
+    method: GET
+    status_code: [200, 401, 403]
+  register: connectivity_test
+  ignore_errors: true
+
+- name: Show connectivity result
+  ansible.builtin.debug:
+    var: connectivity_test
+
 - name: Configure DNS servers on the SVM
   netapp.ontap.na_ontap_dns:
     vserver: "{{ storage_fsx_configure_vserver }}"
