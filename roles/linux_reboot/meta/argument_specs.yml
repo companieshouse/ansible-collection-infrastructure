@@ -1,0 +1,9 @@
+---
+argument_specs:
+  main:
+    short_description: Reboot a Linux host and wait for it to come back
+    description:
+      - Reboots the target host and waits up to 5 minutes for it to become
+        responsive again. Use after a playbook task that requires a reboot
+        to take effect (kernel upgrade, sysctl change, fstab change).
+    options: {}
