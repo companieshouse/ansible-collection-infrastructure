@@ -1,0 +1,48 @@
+---
+- name: Read current root shadow entry
+  ansible.builtin.getent:
+    database: shadow
+    key: root
+  no_log: true
+
+- name: Determine whether root password is already set
+  ansible.builtin.set_fact:
+    root_pw_is_set: >-
+      {{ ansible_facts.getent_shadow['root'][0]
+         not in ['', '*', '!', '!!'] }}
+
+- name: Generate random secure password for root
+  ansible.builtin.set_fact:
+    root_user_secure_password: >-
+      {{ lookup('password', '/dev/null chars=ascii_letters,digits,punctuation length=32') }}
+  when: not root_pw_is_set
+  no_log: true
+
+- name: Set random secure password for root user
+  ansible.builtin.user:
+    name: root
+    password: "{{ root_user_secure_password | password_hash('sha512') }}"
+  when: not root_pw_is_set
+  no_log: true
+
+- name: Clear password from facts
+  ansible.builtin.set_fact:
+    root_user_secure_password: null
+  when: not root_pw_is_set
+  no_log: true
+
+- name: Verify root has a hashed password set
+  ansible.builtin.getent:
+    database: shadow
+    key: root
+  register: root_verify
+  no_log: true
+
+- name: Assert root password is present
+  ansible.builtin.assert:
+    that:
+      - ansible_facts.getent_shadow['root'][0] not in ['', '*', '!', '!!']
+    fail_msg: >-
+      WARNING: Root password has not been set.
+      Please investigate manually.
+    success_msg: Root password has been set.

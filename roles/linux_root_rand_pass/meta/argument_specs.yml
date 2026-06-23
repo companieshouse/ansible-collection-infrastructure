@@ -1,0 +1,11 @@
+---
+argument_specs:
+  main:
+    short_description: Set a random unrecorded password on the root account, if not already set
+    description:
+      - Sets a random 32-character password on the root account if one is not
+        already set. This satisfies CIS benchmarks that require root to have a
+        password set, while ensuring it remains a no-knowledge credential.
+
+      - Please be careful with this one, the password cannot be recovered.
+    options: {}

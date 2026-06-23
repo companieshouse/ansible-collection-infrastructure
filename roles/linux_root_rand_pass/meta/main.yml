@@ -1,0 +1,9 @@
+---
+galaxy_info:
+  standalone: false
+  role_name: linux_root_rand_pass
+  author: ls-comh
+  description: Set a random unrecorded password on the root account, if not already set
+  company: Companies House
+  license: MIT
+dependencies: []

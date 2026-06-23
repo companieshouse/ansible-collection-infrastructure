@@ -1,0 +1,9 @@
+---
+galaxy_info:
+  standalone: false
+  role_name: linux_reboot
+  author: ls-comh
+  description: Reboot a Linux host and wait for it to come back
+  company: Companies House
+  license: MIT
+dependencies: []
