@@ -1,0 +1,5 @@
+---
+linux_python_packages_virtualenv_command: /usr/bin/python3 -m venv
+linux_python_packages_umask: "0022"
+linux_python_packages_executable: ""
+linux_python_packages_extra_args: ""

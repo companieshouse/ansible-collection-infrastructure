@@ -1,0 +1,37 @@
+---
+- name: Assert at least one Python package has been provided
+  ansible.builtin.assert:
+    that:
+      - linux_python_packages_list | length > 0
+    fail_msg: "linux_python_packages_list must contain at least one package."
+
+- name: Assert a target environment is defined
+  ansible.builtin.assert:
+    that:
+      - (linux_python_packages_virtualenv | default('') | trim | length > 0)
+        or (linux_python_packages_executable | default('') | trim | length > 0)
+    fail_msg: >-
+      Either set linux_python_packages_virtualenv path (recommended),
+      or linux_python_packages_executable for an existing interpreter.
+
+- name: Assert that only one of venv or executable is set
+  ansible.builtin.assert:
+    that:
+      - not ((linux_python_packages_virtualenv | default('') | trim | length > 0)
+        and (linux_python_packages_executable | default('') | trim | length > 0))
+    fail_msg: >-
+      You cannot simultaneously use linux_python_packages_virtualenv and linux_python_packages_executable
+      Either set linux_python_packages_virtualenv path (recommended),
+      or linux_python_packages_executable for an existing interpreter.
+
+- name: Install Python packages
+  ansible.builtin.pip:
+    name: "{{ linux_python_packages_list }}"
+    virtualenv: "{{ linux_python_packages_virtualenv | default(omit, true) }}"
+    virtualenv_command: >-
+      {{ (linux_python_packages_virtualenv | default('') | trim | length > 0)
+         | ternary(linux_python_packages_virtualenv_command, omit) }}
+    executable: "{{ linux_python_packages_executable | default(omit, true) }}"
+    extra_args: "{{ linux_python_packages_extra_args | default(omit, true) }}"
+    umask: "{{ linux_python_packages_umask }}"
+    state: present

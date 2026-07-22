@@ -1,0 +1,9 @@
+---
+galaxy_info:
+  standalone: false
+  role_name: linux_ec2_tags
+  author: ls-comh
+  description: Validate that required EC2 tag-derived inventory variables are set.
+  company: Companies House
+  license: MIT
+dependencies: []

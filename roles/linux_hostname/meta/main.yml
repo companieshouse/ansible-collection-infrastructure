@@ -1,0 +1,9 @@
+---
+galaxy_info:
+  standalone: false
+  role_name: linux_hostname
+  author: ls-comh
+  description: Set a Linux host's FQDN from EC2 tag-derived inventory variables.
+  company: Companies House
+  license: MIT
+dependencies: []

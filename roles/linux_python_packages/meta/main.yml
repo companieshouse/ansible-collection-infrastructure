@@ -1,0 +1,9 @@
+---
+galaxy_info:
+  standalone: false
+  role_name: linux_python_packages
+  author: ls-comh
+  description: Installs a list of Python packages into a virtualenv using pip.
+  company: Companies House
+  license: MIT
+dependencies: []

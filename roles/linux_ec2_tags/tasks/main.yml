@@ -1,0 +1,16 @@
+---
+- name: Validate required EC2 variables are set
+  ansible.builtin.assert:
+    that:
+      - lookup('vars', item, default='') | string | trim | length > 0
+    fail_msg: >-
+      Required inventory variable '{{ item }}' is not set or empty.
+      Check that the corresponding EC2 tag exists and the
+      inventory compose block maps it correctly.
+  loop:
+    - ec2_zone
+    - ec2_environment
+    - ec2_hostname
+    - ec2_instance_id
+  loop_control:
+    label: "{{ item }}"

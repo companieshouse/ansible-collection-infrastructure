@@ -1,0 +1,50 @@
+---
+argument_specs:
+  main:
+    short_description: Installs a list of Python packages into a virtualenv using pip.
+    description:
+      - Installs a list of Python packages using ansible.builtin.pip into a
+        virtualenv, which is created if it does not already exist.
+      - Either set linux_python_packages_virtualenv path, or
+        linux_python_packages_executable for an existing interpreter.
+      - You cannot use both simultaneously.
+    options:
+      linux_python_packages_list:
+        type: list
+        elements: str
+        required: true
+        description: >-
+          Required: List of Python packages to install, e.g.
+          ["requests>=2.31", "cvdupdate"], with optional version specifiers.
+      linux_python_packages_virtualenv:
+        type: path
+        required: false
+        description: >-
+          Recommended: Absolute path to the virtualenv install into (and create if needed)
+          e.g. /opt/myapp. Mutually exclusive with linux_python_packages_executable.
+      linux_python_packages_virtualenv_command:
+        type: str
+        required: false
+        default: /usr/bin/python3 -m venv
+        description: >-
+          Command used to create the virtualenv when linux_python_packages_virtualenv is set.
+      linux_python_packages_executable:
+        type: str
+        required: false
+        default: ""
+        description: >-
+          Alternative: existing interpreter to install into. Mutually exclusive with
+          linux_python_packages_virtualenv.
+      linux_python_packages_extra_args:
+        type: str
+        required: false
+        default: ""
+        description: >-
+          Extra arguments passed to pip, e.g. "--index-url
+          https://pypi.internal/simple" for an internal index.
+      linux_python_packages_umask:
+        type: str
+        required: false
+        default: "0022"
+        description: >-
+          umask applied while pip installs.

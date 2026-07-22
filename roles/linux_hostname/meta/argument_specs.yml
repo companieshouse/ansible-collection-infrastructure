@@ -1,0 +1,15 @@
+---
+argument_specs:
+  main:
+    short_description: Set a Linux host's FQDN from EC2 tag-derived inventory variables.
+    description:
+      - Sets the system hostname to '{{ ec2_hostname }}.{{ ec2_zone }}'.
+      - "  - ec2_hostname: the short hostname (required, non-empty string)"
+      - "  - ec2_zone: the DNS zone to append (required, non-empty string)"
+      - >-
+      - The hostname is persisted and is intended to be used for distinct
+      - individual EC2 instances, not baked into AMIs.
+      - >-
+      - In practice, thoughout CH projects these are EC2 tags set in Terraform,
+      - which get surfaced by the amazon.aws.aws_ec2 inventory plugin's compose block.
+    options: {}
