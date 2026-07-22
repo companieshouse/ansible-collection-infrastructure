@@ -1,9 +1,0 @@
----
-argument_specs:
-  main:
-    short_description: Enable the nis_enabled SELinux boolean persistently
-    description:
-      - Sets the nis_enabled SELinux boolean to on, persistently. Required
-        on RHEL-like hosts that need to talk to NIS, or for some NFS /
-        Kerberos configurations that SELinux blocks by default.
-    options: {}

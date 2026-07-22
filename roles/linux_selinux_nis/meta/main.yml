@@ -1,9 +1,0 @@
----
-galaxy_info:
-  standalone: false
-  role_name: linux_selinux_nis
-  author: ls-comh
-  description: Enable the nis_enabled SELinux boolean persistently
-  company: Companies House
-  license: MIT
-dependencies: []
