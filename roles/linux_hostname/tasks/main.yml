@@ -8,6 +8,7 @@
       ec2_hostname and ec2_zone are expected to be set as EC2 Tags
       in Terraform and surfaced using the amazon.aws.aws_ec2
       inventory plugin.
+    quiet: true
   loop:
     - ec2_hostname
     - ec2_zone
@@ -23,7 +24,7 @@
     var: linux_hostname_fqdn
     verbosity: 1
 
-- name: Set hostname
+- name: Set hostname to {{ linux_hostname_fqdn }}
   ansible.builtin.hostname:
     name: "{{ linux_hostname_fqdn }}"
 

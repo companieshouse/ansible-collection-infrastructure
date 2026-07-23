@@ -4,6 +4,7 @@
     that:
       - lookup('vars', item, default='') | string | trim | length > 0
     fail_msg: "'{{ item }}' must be set."
+    quiet: true
   loop:
     - vault_set_fact_path
     - vault_set_fact_name
@@ -17,6 +18,7 @@
     fail_msg: >-
       'vault_set_fact_name' must be a valid identifier (letters, digits,
       underscores; not starting with a digit). Got: '{{ vault_set_fact_name }}'
+    quiet: true
 
 - name: Assert Vault AppRole auth env vars are present
   ansible.builtin.assert:
@@ -27,6 +29,7 @@
       authentication requires ANSIBLE_HASHI_VAULT_ADDR,
       ANSIBLE_HASHI_VAULT_ROLE_ID, and ANSIBLE_HASHI_VAULT_SECRET_ID
       to be exported.
+    quiet: true
   loop:
     - ANSIBLE_HASHI_VAULT_ADDR
     - ANSIBLE_HASHI_VAULT_ROLE_ID
@@ -63,3 +66,4 @@
     fail_msg: >-
       Vault returned no fields for '{{ vault_set_fact_path }}'. Check the
       path exists, has data, and that the AppRole policy grants read access.
+    quiet: true

@@ -4,6 +4,7 @@
     that:
       - linux_python_packages_list | length > 0
     fail_msg: "linux_python_packages_list must contain at least one package."
+    quiet: true
 
 - name: Assert a target environment is defined
   ansible.builtin.assert:
@@ -13,6 +14,7 @@
     fail_msg: >-
       Either set linux_python_packages_virtualenv path (recommended),
       or linux_python_packages_executable for an existing interpreter.
+    quiet: true
 
 - name: Assert that only one of venv or executable is set
   ansible.builtin.assert:
@@ -23,6 +25,7 @@
       You cannot simultaneously use linux_python_packages_virtualenv and linux_python_packages_executable
       Either set linux_python_packages_virtualenv path (recommended),
       or linux_python_packages_executable for an existing interpreter.
+    quiet: true
 
 - name: Install Python packages
   ansible.builtin.pip:
