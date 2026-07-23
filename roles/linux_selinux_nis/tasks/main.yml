@@ -1,6 +1,0 @@
----
-- name: Set nis_enabled SELinux boolean persistently
-  ansible.posix.seboolean:
-    name: nis_enabled
-    state: true
-    persistent: true

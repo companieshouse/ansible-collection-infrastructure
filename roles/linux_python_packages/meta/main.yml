@@ -1,9 +1,9 @@
 ---
 galaxy_info:
   standalone: false
-  role_name: linux_selinux_nis
+  role_name: linux_python_packages
   author: ls-comh
-  description: Enable the nis_enabled SELinux boolean persistently
+  description: Installs a list of Python packages into a virtualenv using pip.
   company: Companies House
   license: MIT
 dependencies: []

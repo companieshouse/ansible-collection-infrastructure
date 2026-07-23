@@ -1,0 +1,50 @@
+---
+- name: Validate required inventory variables are set
+  ansible.builtin.assert:
+    that:
+      - lookup('vars', item, default='') | string | trim | length > 0
+    fail_msg: >-
+      Required inventory variable '{{ item }}' is not set or empty.
+      ec2_hostname and ec2_zone are expected to be set as EC2 Tags
+      in Terraform and surfaced using the amazon.aws.aws_ec2
+      inventory plugin.
+  loop:
+    - ec2_hostname
+    - ec2_zone
+  loop_control:
+    label: "{{ item }}"
+
+- name: Set FQDN fact
+  ansible.builtin.set_fact:
+    linux_hostname_fqdn: "{{ ec2_hostname }}.{{ ec2_zone }}"
+
+- name: Debug FQDN
+  ansible.builtin.debug:
+    var: linux_hostname_fqdn
+    verbosity: 1
+
+- name: Set hostname
+  ansible.builtin.hostname:
+    name: "{{ linux_hostname_fqdn }}"
+
+- name: Check for a cloud-init drop-in directory
+  ansible.builtin.stat:
+    path: /etc/cloud/cloud.cfg.d
+  register: linux_hostname_cloud_cfg_d
+
+- name: Persist hostname across reboots
+  ansible.builtin.copy:
+    dest: /etc/cloud/cloud.cfg.d/99-preserve-hostname.cfg
+    content: |
+      # Managed by companieshouse.infrastructure.linux_hostname
+      preserve_hostname: true
+    owner: root
+    group: root
+    mode: "0644"
+  when: linux_hostname_cloud_cfg_d.stat.exists
+
+- name: Re-gather hostname facts
+  ansible.builtin.setup:
+    filter:
+      - ansible_hostname
+      - ansible_fqdn

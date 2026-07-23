@@ -1,0 +1,12 @@
+---
+argument_specs:
+  main:
+    short_description: Validate required EC2 tag-derived inventory variables are set.
+    description:
+      - Asserts that the inventory variables ec2_zone, ec2_environment,
+        ec2_hostname, and ec2_instance_id are present / non-empty.
+      - These variables are expected to be surfaced by the amazon.aws.aws_ec2
+        inventory plugin's compose block, typically mapping from EC2 tags set
+        by Terraform. Other roles in this collection (notably linux_hostname)
+        depend on them.
+    options: {}
