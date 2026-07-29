@@ -1,0 +1,9 @@
+---
+galaxy_info:
+  standalone: false
+  role_name: storage_nfs
+  author: ls-comh
+  description: Setup NFS tools and mount one or more NFS exports.
+  company: Companies House
+  license: MIT
+dependencies: []

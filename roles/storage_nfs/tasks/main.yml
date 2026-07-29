@@ -1,0 +1,61 @@
+---
+- name: Assert at least one NFS mount has been provided
+  ansible.builtin.assert:
+    that:
+      - storage_nfs_mounts | length > 0
+    fail_msg: "storage_nfs_mounts must contain at least one mount definition."
+
+- name: Assert this is a RHEL-compatible host
+  ansible.builtin.assert:
+    that:
+      - ansible_os_family == "RedHat"
+    fail_msg: >-
+      storage_nfs currently only intended for use on RHEL-family hosts
+      (detected ansible_os_family='{{ ansible_os_family | default("unknown") }}').
+
+- name: Assert every mount definition has its required fields
+  ansible.builtin.assert:
+    that:
+      - item.server | default('') | trim | length > 0
+      - item.export_path | default('') | trim | length > 0
+      - item.mount_point | default('') | trim | length > 0
+      - item.mount_point is match('^/')
+    fail_msg: >-
+      Each entry in storage_nfs_mounts needs a non-empty 'server',
+      'export_path' and absolute 'mount_point'. Offending entry: {{ item }}
+  loop: "{{ storage_nfs_mounts }}"
+  loop_control:
+    label: "{{ item.mount_point | default('<no mount_point>') }}"
+
+- name: Install NFS utilities
+  ansible.builtin.package:
+    name: nfs-utils
+    state: present
+
+- name: Enable and start rpcbind socket
+  ansible.builtin.systemd:
+    name: rpcbind.socket
+    enabled: true
+    state: started
+
+- name: Ensure mount point directories exist
+  ansible.builtin.file:
+    path: "{{ item.mount_point }}"
+    state: directory
+    owner: "{{ item.owner | default(storage_nfs_mount_owner) }}"
+    group: "{{ item.group | default(storage_nfs_mount_group) }}"
+    mode: "{{ item.mode | default(storage_nfs_mount_mode) }}"
+  loop: "{{ storage_nfs_mounts }}"
+  loop_control:
+    label: "{{ item.mount_point }}"
+
+- name: Configure NFS mounts in fstab and mount them
+  ansible.posix.mount:
+    path: "{{ item.mount_point }}"
+    src: "{{ item.server }}:{{ item.export_path }}"
+    fstype: nfs
+    opts: "{{ item.opts | default(storage_nfs_mount_opts) }}"
+    state: mounted
+  loop: "{{ storage_nfs_mounts }}"
+  loop_control:
+    label: "{{ item.server }}:{{ item.export_path }} -> {{ item.mount_point }}"

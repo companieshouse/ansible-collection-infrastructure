@@ -23,8 +23,16 @@ AppRole authentication requires the following to run:
 
 | Variable | Required | Default | Description |
 |---|---|---|---|
-| `storage_fsx_vault_base_path` | yes | — | Base path which contains `/configs`, `/credentials`, and `/admins` |
-| `storage_fsx_vault_engine_version` | no | `1` | KV secrets engine version (`1` or `2`) |
+| `storage_fsx_vault_base_path` | yes | — | Base path containing `/configs`, `/credentials`, and `/admins`, **relative to the engine mount point** |
+| `storage_fsx_vault_engine_mount_point` | yes | — | Mount point of the KV secrets engine |
+| `storage_fsx_vault_engine_version` | yes | — | KV secrets engine version (`1` or `2`) |
+
+You can find your engine mount point and version using
+`vault secrets list -detailed`; the `Path` column is the mount point,
+and a mount with no `version` option is version 1.
+
+Paths are resolved **relative to the mount point**, so `example-kv` +
+`app-env/database` becomes `example-kv/app-env/database`.
 
 `storage_fsx_vault_base_path` must contain:
 
@@ -77,7 +85,9 @@ the vars should be mapped across:
     - role: companieshouse.infrastructure.storage_fsx_vault
       tags: [vault]
       vars:
-        storage_fsx_vault_base_path: "secret/myproject/fsx/myfilesystem"
+        storage_fsx_vault_engine_mount_point: "{{ vault_engine_mount_point }}"
+        storage_fsx_vault_engine_version: 2
+        storage_fsx_vault_base_path: "{{ aws_profile }}/amzfsx/{{ fsx_name }}"
     - role: companieshouse.infrastructure.storage_fsx_configure
       vars:
         storage_fsx_configure_netapp_hostname: "{{ storage_fsx_vault_netapp_hostname }}"
@@ -91,16 +101,6 @@ the vars should be mapped across:
         storage_fsx_configure_dc_admin_password: "{{ storage_fsx_vault_ad_join_password }}"
         storage_fsx_configure_dc_ou: "{{ storage_fsx_vault_dc_ou }}"
         storage_fsx_configure_domain_admins: "{{ storage_fsx_vault_domain_admins }}"
-```
-
-If secrets are stored on a KV2 mount, set the version explicitly:
-
-```yaml
-    - role: companieshouse.infrastructure.storage_fsx_vault
-      tags: [vault]
-      vars:
-        storage_fsx_vault_base_path: "secret/myproject/fsx/myfilesystem"
-        storage_fsx_vault_engine_version: 2
 ```
 
 If you're providing local vars to `storage_fsx_configure` (e.g.

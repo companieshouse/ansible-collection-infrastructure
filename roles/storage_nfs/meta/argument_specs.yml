@@ -1,0 +1,77 @@
+---
+argument_specs:
+  main:
+    short_description: Setup NFS tools and mount one or more NFS exports.
+    description:
+      - Installs NFS client utilities and mounts one or more NFS exports,
+        creating mount point directories, updating `/etc/fstab`,
+        and mounting exports.
+      - Optional per-mount fields fall back to the matching
+        `storage_nfs_mount_*` variable. Set those to change the default for
+        every mount at once.
+    options:
+      storage_nfs_mounts:
+        type: list
+        elements: dict
+        required: true
+        description: List of NFS mounts to configure; cannot be empty.
+        options:
+          server:
+            type: str
+            required: true
+            description: NFS server hostname or IP.
+          export_path:
+            type: str
+            required: true
+            description: Path of the export on the NFS server.
+          mount_point:
+            type: str
+            required: true
+            description: Local path to mount the export at.
+          owner:
+            type: str
+            required: false
+            description: >-
+              Owner of the mount point directory. Defaults to
+              storage_nfs_mount_owner.
+          group:
+            type: str
+            required: false
+            description: >-
+              Group of the mount point directory. Defaults to
+              storage_nfs_mount_group.
+          mode:
+            type: str
+            required: false
+            description: >-
+              Mode of the mount point directory. Defaults to
+              storage_nfs_mount_mode.
+          opts:
+            type: str
+            required: false
+            description: >-
+              NFS mount options passed to mount(8). Defaults to
+              storage_nfs_mount_opts.
+
+      storage_nfs_mount_owner:
+        type: str
+        required: false
+        default: root
+        description: Default owner for mount point directories.
+      storage_nfs_mount_group:
+        type: str
+        required: false
+        default: root
+        description: Default group for mount point directories.
+      storage_nfs_mount_mode:
+        type: str
+        required: false
+        default: "0755"
+        description: Default permissions for mount point directories.
+      storage_nfs_mount_opts:
+        type: str
+        required: false
+        default: "defaults,_netdev"
+        description: >-
+          Default NFS mount options. Includes _netdev so the mount waits for
+          the network and a missing server does not block boot.

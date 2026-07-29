@@ -1,0 +1,137 @@
+---
+- name: Validate role inputs are set
+  ansible.builtin.assert:
+    that:
+      - lookup('vars', item, default='') | string | trim | length > 0
+    fail_msg: "'{{ item }}' must be set."
+  loop:
+    - storage_data_vol_mount_point
+    - storage_data_vol_device_name
+  loop_control:
+    label: "{{ item }}"
+
+- name: Wait for block device to be available
+  ansible.builtin.wait_for:
+    path: "{{ storage_data_vol_device_name }}"
+    state: present
+    timeout: 300
+
+- name: Confirm device is a real block device (and not a stale path)
+  ansible.builtin.command: blockdev --getsize64 {{ storage_data_vol_device_name }}
+  register: storage_data_vol_blockdev
+  changed_when: false
+  retries: 10
+  delay: 3
+  until: storage_data_vol_blockdev.rc == 0
+
+- name: Check if device is already formatted
+  ansible.builtin.command: blkid -o value -s TYPE {{ storage_data_vol_device_name }}
+  register: storage_data_vol_device_fstype
+  failed_when: false
+  changed_when: false
+
+- name: Check whether the device carries a partition table
+  ansible.builtin.command: blkid -o value -s PTTYPE {{ storage_data_vol_device_name }}
+  register: storage_data_vol_device_pttype
+  failed_when: false
+  changed_when: false
+  when: storage_data_vol_device_fstype.stdout == ""
+
+- name: Refuse to format a device that carries a partition table
+  ansible.builtin.assert:
+    that:
+      - storage_data_vol_device_pttype.stdout | trim | length == 0
+    fail_msg: >-
+      '{{ storage_data_vol_device_name }}' has no whole-device filesystem but
+      carries a '{{ storage_data_vol_device_pttype.stdout | trim }}' partition
+      table, so may be in use. This role formats whole devices only.
+      Run 'lsblk -f {{ storage_data_vol_device_name }}' on the host and
+      confirm the correct device. If you want an existing partition, set
+      storage_data_vol_device_name to that partition. If you intentionally want
+      to wipe and re-use this specific disk, please manually wipe it (wipefs -a)
+      before re-running.
+  when: storage_data_vol_device_fstype.stdout == ""
+
+- name: Locate lsof and fuser
+  ansible.builtin.find:
+    paths:
+      - /usr/bin
+      - /usr/sbin
+      - /bin
+      - /sbin
+    patterns:
+      - lsof
+      - fuser
+    file_type: any
+  register: storage_data_vol_busy_tools
+  when: storage_data_vol_device_fstype.stdout == ""
+
+- name: Assert busy-check tools are available before formatting
+  ansible.builtin.assert:
+    that:
+      - storage_data_vol_busy_tools.files
+        | map(attribute='path') | map('basename')
+        | unique | sort == ['fuser', 'lsof']
+    fail_msg: >-
+      Both lsof and fuser are required for the device-busy check, and at
+      least one is missing. Install the 'lsof' and 'psmisc' packages
+      before re-running this role.
+  when: storage_data_vol_device_fstype.stdout == ""
+
+- name: Wait for device to be ready and not busy
+  ansible.builtin.shell: |
+    set -euo pipefail
+    for i in {1..30}; do
+      if ! lsof "{{ storage_data_vol_device_name }}" >/dev/null 2>&1 \
+         && ! fuser "{{ storage_data_vol_device_name }}" >/dev/null 2>&1; then
+        exit 0
+      fi
+      sleep 2
+    done
+    exit 1
+  args:
+    executable: /bin/bash
+  changed_when: false
+  when: storage_data_vol_device_fstype.stdout == ""
+
+- name: Create filesystem on block device
+  community.general.filesystem:
+    fstype: "{{ storage_data_vol_filesystem_type }}"
+    dev: "{{ storage_data_vol_device_name }}"
+  when: storage_data_vol_device_fstype.stdout == ""
+
+- name: Get UUID of the device
+  ansible.builtin.command: lsblk {{ storage_data_vol_device_name }} -no UUID
+  register: storage_data_vol_uuid
+  changed_when: false
+
+- name: Assert UUID was retrieved
+  ansible.builtin.assert:
+    that:
+      - storage_data_vol_uuid.stdout | trim | length > 0
+    fail_msg: >-
+      Could not retrieve a UUID for '{{ storage_data_vol_device_name }}'.
+      Ensure the device has a filesystem and udev has settled.
+
+- name: Set effective filesystem type
+  ansible.builtin.set_fact:
+    storage_data_vol_effective_fstype: >-
+      {{ storage_data_vol_device_fstype.stdout
+         if storage_data_vol_device_fstype.stdout != ''
+         else storage_data_vol_filesystem_type }}
+
+- name: Ensure mount point directory exists
+  ansible.builtin.file:
+    path: "{{ storage_data_vol_mount_point }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Mount the block device
+  ansible.posix.mount:
+    path: "{{ storage_data_vol_mount_point }}"
+    src: "UUID={{ storage_data_vol_uuid.stdout | trim }}"
+    fstype: "{{ storage_data_vol_effective_fstype }}"
+    state: mounted
+    opts: "{{ storage_data_vol_mount_opts }}"

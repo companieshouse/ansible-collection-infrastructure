@@ -1,0 +1,3 @@
+---
+storage_data_vol_filesystem_type: xfs
+storage_data_vol_mount_opts: "defaults,nofail"

@@ -1,0 +1,39 @@
+---
+argument_specs:
+  main:
+    short_description: Format and mount a single block device on a Linux host.
+    description:
+      - Waits for a named block device to appear, formats it if not already
+        formatted, ensures the mount point directory exists, and mounts it.
+      - Targets a specific device by path (e.g. /dev/nvme1n1). Use
+        storage_lvm instead if you want the role to resolve EBS volumes
+        via a Purpose tag.
+      - If the device is already formatted with any filesystem, the role
+        leaves the existing filesystem alone.
+      - Refuses to format a device that carries a partition table, to avoid
+        unintentional data loss.
+    options:
+      storage_data_vol_mount_point:
+        type: str
+        required: true
+        description: Absolute path to mount the device at, e.g. /opt.
+      storage_data_vol_device_name:
+        type: str
+        required: true
+        description: >-
+          Absolute path of the block device, e.g. /dev/nvme1n1. The role
+          will WAIT up to 300 seconds for this device to appear. Caller is
+          responsible for ensuring the device name is correct for the
+          target host. Picking the wrong device may DESTROY DATA on the
+          system disk.
+      storage_data_vol_filesystem_type:
+        type: str
+        required: false
+        default: xfs
+        description: Filesystem type to create if the device is not already formatted.
+      storage_data_vol_mount_opts:
+        type: str
+        required: false
+        default: "defaults,nofail"
+        description: >-
+          Mount options passed to mount(8) and written to /etc/fstab.

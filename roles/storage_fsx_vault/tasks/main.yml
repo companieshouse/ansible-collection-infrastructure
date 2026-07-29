@@ -1,10 +1,15 @@
 ---
-- name: Validate storage_fsx_vault_base_path is set
+- name: Validate role inputs are set
   ansible.builtin.assert:
     that:
-      - storage_fsx_vault_base_path | string | trim | length > 0
-    fail_msg: >-
-      'storage_fsx_vault_base_path' must be set.
+      - lookup('vars', item, default='') | string | trim | length > 0
+    fail_msg: "'{{ item }}' must be set and non-empty."
+  loop:
+    - storage_fsx_vault_base_path
+    - storage_fsx_vault_engine_mount_point
+    - storage_fsx_vault_engine_version
+  loop_control:
+    label: "{{ item }}"
 
 - name: Assert Vault AppRole auth env vars are present
   ansible.builtin.assert:

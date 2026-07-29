@@ -1,0 +1,9 @@
+---
+# storage_nfs_mounts is required (see meta/argument_specs.yml)
+
+# The following can be overridden individually within
+# storage_nfs_mounts, or across all using group_vars.
+storage_nfs_mount_owner: root
+storage_nfs_mount_group: root
+storage_nfs_mount_mode: "0755"
+storage_nfs_mount_opts: "defaults,_netdev"

@@ -7,16 +7,26 @@ argument_specs:
         Ansible facts; intended to be used in conjunction with `storage_fsx_configure`.
       - List-valued fields (`dns_servers`, `domain_admins`) must be stored in
         Vault as native lists; JSON-encoded strings are rejected.
+      - Both the KV engine mount point and version are required.
     options:
       storage_fsx_vault_base_path:
         type: str
         required: true
         description: >-
-          Base path which contains /configs, /credentials, and /admins
+          Base path which contains /configs, /credentials, and /admins,
+          relative to the KV engine mount point.
+      storage_fsx_vault_engine_mount_point:
+        type: str
+        required: true
+        description: >-
+          Mount point of the KV secrets engine holding the FSx secrets (Path
+          column of `vault secrets list`) which gets prepended to
+          storage_fsx_vault_base_path.
       storage_fsx_vault_engine_version:
         type: int
-        required: false
-        default: 1
+        required: true
         choices: [1, 2]
         description: >-
-          KV secrets engine version (1 or 2)
+          KV secrets engine version. Check the Options column of
+          `vault secrets list -detailed`; a mount with no version option is
+          version 1.

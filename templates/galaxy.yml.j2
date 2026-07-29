@@ -11,6 +11,7 @@ tags:
   - linux
   - aws
 dependencies:
+  "amazon.aws": ">=9.0.0,<10.0.0"
   "ansible.posix": ">=1.5.4"
   "community.general": ">=8.0.0"
   "community.hashi_vault": ">=6.2.0,<7.0.0"
@@ -19,3 +20,5 @@ dependencies:
 repository: "https://github.com/companieshouse/ansible-collection-infrastructure"
 build_ignore:
   - templates
+  - "*.DS_Store"
+  - "*._*"

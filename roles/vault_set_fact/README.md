@@ -1,15 +1,13 @@
 # Role: Vault Set Fact | ansible-collection-infrastructure
 
-Fetches a HashiCorp Vault secret path and exposes its contents as
-Ansible facts.
+Fetches a HashiCorp Vault secret path and sets its contents as
+Ansible facts. Lookups use `no_log: true` to avoid secrets appearing in output.
 
-Lookups use `no_log: true` to avoid secrets appearing in output.
-
-Subsequent tasks and roles can then make use of individual fields, using
+Subsequent tasks and roles can make use of individual fields, using
 the format `{{ <fact_name>.<field> }}`.
 
 In the event you need to fetch multiple paths, re-use this role with 
-different `vault_set_fact_path`s and `vault_set_fact_name`s.
+relevant `vault_set_fact_path`s and `vault_set_fact_name`s.
 
 ## Requirements
 
@@ -30,10 +28,18 @@ To skip this presence check (auth itself still requires the vars), set
 
 | Variable | Required | Default | Description |
 |---|---|---|---|
-| `vault_set_fact_path` | yes | — | Vault KV secret path |
+| `vault_set_fact_path` | yes | — | Vault KV secret path, **relative to the engine mount point** |
 | `vault_set_fact_name` | yes | — | Name to register as the Ansible fact. Must be a valid identifier (letters, digits, underscores; not starting with a digit) |
-| `vault_set_fact_engine_version` | no | `1` | KV secrets engine version (`1` or `2`) |
+| `vault_set_fact_engine_mount_point` | yes | — | Mount point of the KV secrets engine |
+| `vault_set_fact_engine_version` | yes | — | KV secrets engine version (`1` or `2`) |
 | `vault_set_fact_skip_env_check` | no | `false` | Skip the env var presence assertion. Auth still requires the vars; useful when a caller validates them once up-front |
+
+You can find your engine mount point and version using
+`vault secrets list -detailed`; the `Path` column is the mount point,
+and a mount with no `version` option is version 1.
+
+Paths are resolved **relative to the mount point**, so `example-kv` +
+`app-env/database` becomes `example-kv/app-env/database`.
 
 ## Usage
 
@@ -44,68 +50,51 @@ To skip this presence check (auth itself still requires the vars), set
   roles:
     - role: companieshouse.infrastructure.vault_set_fact
       vars:
-        vault_set_fact_path: "secret/app-env/database"
+        vault_set_fact_engine_mount_point: "example-kv"
+        vault_set_fact_engine_version: 2
+        vault_set_fact_path: "app-env/database"
         vault_set_fact_name: "app_env_database"
-        vault_set_fact_engine_version: 2 # defaults to 1
   tasks:
     - name: Use Database Secrets
       ansible.builtin.debug:
         msg: "Database running on {{ app_env_database.host }}, under {{ app_env_database.username }}"
 ```
 
-### Fetch multiple vault paths
-
-Include the role once per path:
+### Fetching multiple mounts with different KV versions
 
 ```yaml
 - hosts: localhost
+  # group_vars/all.yml (set defaults for KV2)
+  #   vault_set_fact_engine_mount_point: "example-kv"
+  #   vault_set_fact_engine_version: 2
   tasks:
-    - name: Set Database Facts
+    - name: Set Database Facts # KV2
       ansible.builtin.include_role:
         name: companieshouse.infrastructure.vault_set_fact
       vars:
-        vault_set_fact_path: "secret/app-env/database"
+        vault_set_fact_path: "app-env/database"
         vault_set_fact_name: "app_env_database"
 
-    - name: Set API Facts
+    - name: Set API Facts # KV1
       ansible.builtin.include_role:
         name: companieshouse.infrastructure.vault_set_fact
       vars:
-        vault_set_fact_path: "secret/app-env/api"
+        vault_set_fact_engine_mount_point: "legacy-kv"
+        vault_set_fact_engine_version: 1
+        vault_set_fact_path: "app-env/api"
         vault_set_fact_name: "app_env_api"
 
-    - name: Use Secrets
-      ansible.builtin.debug:
-        msg: "Database running on {{ app_env_database.host }}, using API token {{ app_env_api.token[:4] }}"
+    - name: Set Cache Facts # KV2
+      ansible.builtin.include_role:
+        name: companieshouse.infrastructure.vault_set_fact
+      vars:
+        vault_set_fact_path: "app-env/cache"
+        vault_set_fact_name: "app_env_cache"
 ```
 
-### Calling from another role
-
-If you use `vault_set_fact` inside another role with its own env var
-validation, set `vault_set_fact_skip_env_check: true` to avoid repeating
-validation on every call:
-
-```yaml
-- name: Validate Vault AppRole auth env vars are present
-  ansible.builtin.assert:
-    # env var checks done up-front
-
-- name: Fetch first bundle
-  ansible.builtin.include_role:
-    name: companieshouse.infrastructure.vault_set_fact
-  vars:
-    vault_set_fact_path: "{{ base_path }}/config"
-    vault_set_fact_name: "config_facts"
-    vault_set_fact_skip_env_check: true
-
-- name: Fetch second bundle
-  ansible.builtin.include_role:
-    name: companieshouse.infrastructure.vault_set_fact
-  vars:
-    vault_set_fact_path: "{{ base_path }}/credentials"
-    vault_set_fact_name: "credential_facts"
-    vault_set_fact_skip_env_check: true
-```
+This relies on `include_role` scoping its `vars` to the
+included tasks, so use `include_role` rather than
+`import_role` when mixing mounts or versions.
 
 ## Tips
 

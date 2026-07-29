@@ -1,0 +1,9 @@
+---
+galaxy_info:
+  standalone: false
+  role_name: storage_data_vol
+  author: ls-comh
+  description: Format and mount a single named block device on a Linux host.
+  company: Companies House
+  license: MIT
+dependencies: []

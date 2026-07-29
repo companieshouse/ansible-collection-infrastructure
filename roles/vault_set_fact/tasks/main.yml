@@ -3,10 +3,12 @@
   ansible.builtin.assert:
     that:
       - lookup('vars', item, default='') | string | trim | length > 0
-    fail_msg: "'{{ item }}' must be set."
+    fail_msg: "'{{ item }}' must be set and non-empty."
   loop:
     - vault_set_fact_path
     - vault_set_fact_name
+    - vault_set_fact_engine_mount_point
+    - vault_set_fact_engine_version
   loop_control:
     label: "{{ item }}"
 
@@ -17,6 +19,17 @@
     fail_msg: >-
       'vault_set_fact_name' must be a valid identifier (letters, digits,
       underscores; not starting with a digit). Got: '{{ vault_set_fact_name }}'
+
+- name: Warn if the mount name has been repeated at the start of the path
+  ansible.builtin.debug:
+    msg: >-
+      WARNING: vault_set_fact_path starts with
+      '{{ vault_set_fact_engine_mount_point }}/', which is also the engine
+      mount point. Paths are resolved relative to the mount, so this will read
+      '{{ vault_set_fact_engine_mount_point }}/{{ vault_set_fact_path }}'.
+      Drop the prefix if the repetition was unintended.
+  when: vault_set_fact_path is string and
+        vault_set_fact_path.startswith(vault_set_fact_engine_mount_point ~ '/')
 
 - name: Assert Vault AppRole auth env vars are present
   ansible.builtin.assert:
@@ -60,6 +73,8 @@
     that:
       - lookup('vars', vault_set_fact_name) is mapping
       - lookup('vars', vault_set_fact_name) | length > 0
-    fail_msg: >-
-      Vault returned no fields for '{{ vault_set_fact_path }}'. Check the
-      path exists, has data, and that the AppRole policy grants read access.
+    fail_msg: |-
+      Vault returned no fields for '{{ vault_set_fact_engine_mount_point }}/{{ vault_set_fact_path }}'. Check that:
+        - the path exists on that mount
+        - the mount is KV version {{ vault_set_fact_engine_version }}
+        - the AppRole policy grants read access
