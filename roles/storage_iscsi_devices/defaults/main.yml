@@ -1,0 +1,13 @@
+---
+# Vault path, engine mount point and version are required
+# (see meta/argument_specs.yml)
+
+storage_iscsi_devices_install_packages: true
+storage_iscsi_devices_multipath: false
+
+storage_iscsi_devices_node_startup: automatic
+storage_iscsi_devices_replacement_timeout: "{{ 5 if storage_iscsi_devices_multipath | bool else 120 }}"
+
+# DESTRUCTIVE
+storage_iscsi_devices_wipe: false
+storage_iscsi_devices_allow_initiator_change: false

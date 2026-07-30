@@ -1,0 +1,23 @@
+---
+- name: Install device-mapper-multipath
+  ansible.builtin.package:
+    name: device-mapper-multipath
+    state: present
+  when: storage_iscsi_devices_install_packages | bool
+
+- name: Check whether multipath is already configured
+  ansible.builtin.stat:
+    path: /etc/multipath.conf
+  register: storage_iscsi_devices_multipath_conf
+
+- name: Generate the default multipath configuration
+  ansible.builtin.command:
+    cmd: mpathconf --enable
+  when: not storage_iscsi_devices_multipath_conf.stat.exists
+  changed_when: true
+
+- name: Ensure multipathd is enabled and running
+  ansible.builtin.systemd:
+    name: multipathd
+    enabled: true
+    state: started

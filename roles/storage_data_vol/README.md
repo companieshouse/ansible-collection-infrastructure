@@ -14,11 +14,6 @@ For LVM-backed mounts resolved via EBS `Purpose` tags, look at `storage_lvm`.
 
 ## Variables
 
-Defined in [`meta/argument_specs.yml`](meta/argument_specs.yml). View with:
-```
-ansible-doc -t role companieshouse.infrastructure.storage_data_vol
-```
-
 | Variable | Required | Default | Description |
 |---|---|---|---|
 | `storage_data_vol_mount_point` | yes | — | Absolute path to mount the device |
