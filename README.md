@@ -19,7 +19,7 @@ A collection of Ansible roles used frequently in Companies House infrastructure 
 | [`linux_reboot`](roles/linux_reboot/README.md) | Reboot a Linux host and wait for it to come back. |
 | [`linux_root_rand_pass`](roles/linux_root_rand_pass/README.md) | Set a random, unrecorded password on the root account, if not already set. |
 
-### Storage
+### Storage - WIP Released for Testing within CH Projects
 
 | Role | Description |
 |---|---|
