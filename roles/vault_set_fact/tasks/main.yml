@@ -4,6 +4,7 @@
     that:
       - lookup('vars', item, default='') | string | trim | length > 0
     fail_msg: "'{{ item }}' must be set and non-empty."
+    quiet: true
   loop:
     - vault_set_fact_path
     - vault_set_fact_name
@@ -19,6 +20,7 @@
     fail_msg: >-
       'vault_set_fact_name' must be a valid identifier (letters, digits,
       underscores; not starting with a digit). Got: '{{ vault_set_fact_name }}'
+    quiet: true
 
 - name: Warn if the mount name has been repeated at the start of the path
   ansible.builtin.debug:
@@ -40,6 +42,7 @@
       authentication requires ANSIBLE_HASHI_VAULT_ADDR,
       ANSIBLE_HASHI_VAULT_ROLE_ID, and ANSIBLE_HASHI_VAULT_SECRET_ID
       to be exported.
+    quiet: true
   loop:
     - ANSIBLE_HASHI_VAULT_ADDR
     - ANSIBLE_HASHI_VAULT_ROLE_ID
@@ -78,3 +81,4 @@
         - the path exists on that mount
         - the mount is KV version {{ vault_set_fact_engine_version }}
         - the AppRole policy grants read access
+    quiet: true
