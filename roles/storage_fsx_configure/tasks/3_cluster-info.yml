@@ -24,3 +24,4 @@
     fail_msg: >-
       ONTAP REST gather_subset=cluster did not return a cluster name
       Check the FSx management endpoint is reachable and credentials are valid
+    quiet: true

@@ -4,6 +4,7 @@
     that:
       - lookup('vars', item, default='') | string | trim | length > 0
     fail_msg: "'{{ item }}' must be set and non-empty."
+    quiet: true
   loop:
     - storage_iscsi_devices_vault_path
     - storage_iscsi_devices_vault_engine_mount_point
@@ -19,6 +20,7 @@
       storage_iscsi_devices currently only intended for use on RHEL-family
       hosts (for mpathconf and iscsi.service) -
       (detected ansible_os_family='{{ ansible_os_family | default("unknown") }}').
+    quiet: true
 
 - name: Install iSCSI initiator tooling
   ansible.builtin.package:
@@ -39,6 +41,7 @@
       iscsiadm not found at /usr/sbin/iscsiadm. Install
       iscsi-initiator-utils, or leave
       storage_iscsi_devices_install_packages set to true.
+    quiet: true
 
 - name: Check for pre-existing iSCSI sessions
   ansible.builtin.command:
@@ -71,6 +74,7 @@
     fail_msg: >-
       Missing 'iscsi_initiator_name' in Vault config at
       '{{ storage_iscsi_devices_vault_path }}'.
+    quiet: true
 
 - name: Assert the iSCSI initiator name is a well-formed RFC 3720 name
   ansible.builtin.assert:
@@ -84,6 +88,7 @@
       initiator name. Expected iqn.YYYY-MM.reverse.domain[:unique],
       eui.<16 hex digits> or naa.<16-32 hex digits>, up to 223 characters.
       iscsid silently refuses to start with a malformed name.
+    quiet: true
   vars:
     storage_iscsi_devices_initiator_requested: >-
       {{ storage_iscsi_devices_config.iscsi_initiator_name | string | trim }}
@@ -99,6 +104,7 @@
       Missing or empty 'iscsi_portal_ips' in Vault config at
       '{{ storage_iscsi_devices_vault_path }}'. It must be a native Vault
       list, not JSON-encoded string.
+    quiet: true
 
 - name: Assert multipath is enabled when more than one portal is configured
   ansible.builtin.assert:
@@ -111,6 +117,7 @@
       multi-path, the same LUN is presented as several independent block
       devices, and writing to more than one corrupts it. Either enable
       multi-path, or point at a single portal.
+    quiet: true
 
 - name: Read the currently configured initiator name
   ansible.builtin.shell: |
@@ -173,6 +180,7 @@
       Refusing to log out iSCSI sessions that still have filesystems mounted:
       {{ storage_iscsi_devices_mounted.stdout_lines | join('; ') }}.
       Safely stop anything using them and unmount manually before re-running.
+    quiet: true
   when:
     - storage_iscsi_devices_relogin_required | bool
     - storage_iscsi_devices_allow_initiator_change | bool
@@ -243,6 +251,7 @@
     fail_msg: >-
       iSCSI discovery failed on portal(s):
       {{ storage_iscsi_devices_discovery_failures | join(', ') }}
+    quiet: true
   when: not ansible_check_mode
   vars:
     storage_iscsi_devices_discovery_failures: >-
@@ -271,6 +280,7 @@
       has
       ('{{ storage_iscsi_devices_config.iscsi_initiator_name | trim }}') in an
       initiator group with LUNs mapped.
+    quiet: true
   when: not ansible_check_mode
 
 - name: Find targets reachable on more than one portal
@@ -298,6 +308,7 @@
       {{ storage_iscsi_devices_multipath_targets.stdout_lines | join('; ') }}.
       Logging in now would present each LUN as several independent block
       devices, and writing to more than one would corrupt it.
+    quiet: true
   when: not ansible_check_mode
 
 - name: Read current node startup modes
@@ -394,6 +405,7 @@
       Logged in, but these node records have no session:
       {{ storage_iscsi_devices_missing_sessions.stdout_lines | join('; ') }}.
       Check target ACLs for this initiator, and reachability of the portal.
+    quiet: true
   when: not ansible_check_mode
 
 - name: Rescan iSCSI sessions
@@ -476,6 +488,7 @@
          else 'block devices were' }} found. Check the target has LUNs mapped
       to this initiator{{ ', and that multipathd has claimed the paths'
                           if storage_iscsi_devices_multipath | bool else '' }}.
+    quiet: true
   when:
     - storage_iscsi_devices_wipe | bool
     - not ansible_check_mode

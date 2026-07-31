@@ -4,6 +4,7 @@
     that:
       - storage_nfs_mounts | length > 0
     fail_msg: "storage_nfs_mounts must contain at least one mount definition."
+    quiet: true
 
 - name: Assert this is a RHEL-compatible host
   ansible.builtin.assert:
@@ -12,6 +13,7 @@
     fail_msg: >-
       storage_nfs currently only intended for use on RHEL-family hosts
       (detected ansible_os_family='{{ ansible_os_family | default("unknown") }}').
+    quiet: true
 
 - name: Assert every mount definition has its required fields
   ansible.builtin.assert:
@@ -23,6 +25,7 @@
     fail_msg: >-
       Each entry in storage_nfs_mounts needs a non-empty 'server',
       'export_path' and absolute 'mount_point'. Offending entry: {{ item }}
+    quiet: true
   loop: "{{ storage_nfs_mounts }}"
   loop_control:
     label: "{{ item.mount_point | default('<no mount_point>') }}"

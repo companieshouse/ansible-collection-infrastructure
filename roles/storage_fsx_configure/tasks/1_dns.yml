@@ -4,6 +4,7 @@
     that:
       - storage_fsx_configure_dns_servers | length > 0
     fail_msg: "storage_fsx_configure_dns_servers must contain at least one nameserver."
+    quiet: true
 
 - name: Configure DNS servers on the SVM
   netapp.ontap.na_ontap_dns:

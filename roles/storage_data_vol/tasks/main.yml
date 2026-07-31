@@ -4,6 +4,7 @@
     that:
       - lookup('vars', item, default='') | string | trim | length > 0
     fail_msg: "'{{ item }}' must be set."
+    quiet: true
   loop:
     - storage_data_vol_mount_point
     - storage_data_vol_device_name
@@ -50,6 +51,7 @@
       storage_data_vol_device_name to that partition. If you intentionally want
       to wipe and re-use this specific disk, please manually wipe it (wipefs -a)
       before re-running.
+    quiet: true
   when: storage_data_vol_device_fstype.stdout == ""
 
 - name: Locate lsof and fuser
@@ -76,6 +78,7 @@
       Both lsof and fuser are required for the device-busy check, and at
       least one is missing. Install the 'lsof' and 'psmisc' packages
       before re-running this role.
+    quiet: true
   when: storage_data_vol_device_fstype.stdout == ""
 
 - name: Wait for device to be ready and not busy
@@ -112,6 +115,7 @@
     fail_msg: >-
       Could not retrieve a UUID for '{{ storage_data_vol_device_name }}'.
       Ensure the device has a filesystem and udev has settled.
+    quiet: true
 
 - name: Set effective filesystem type
   ansible.builtin.set_fact:

@@ -37,6 +37,7 @@
       CIFS server already exists as '{{ existing_name }}' on SVM '{{ storage_fsx_configure_vserver }}'
       but config requests '{{ storage_fsx_configure_cifs_server_name }}'. Renames require manual AD
       cleanup of the old computer object.
+    quiet: true
   vars:
     _matching_servers: >-
       {{ storage_fsx_configure_cifs_current.ontap_info['protocols/cifs/services'].records

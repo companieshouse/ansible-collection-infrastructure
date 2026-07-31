@@ -6,6 +6,7 @@
     fail_msg: >-
       Required inventory variable '{{ item }}' is not set or empty.
       Ensure the EC2 tag exists and the inventory compose block maps it correctly.
+    quiet: true
   loop:
     - ec2_instance_id
   loop_control:
@@ -23,12 +24,14 @@
       AWS_PROFILE), or set storage_lvm_aws_region explicitly. If you rely on a
       region in the default profile of ~/.aws/config with no environment
       variables set, set storage_lvm_aws_region; this check cannot see it.
+    quiet: true
 
 - name: Assert at least one mount has been provided
   ansible.builtin.assert:
     that:
       - storage_lvm_mount_points | length > 0
     fail_msg: "storage_lvm_mount_points must contain at least one mount definition."
+    quiet: true
 
 - name: Check required binaries are present
   ansible.builtin.stat:
@@ -47,6 +50,7 @@
     fail_msg: >-
       'lvm2' and 'parted' are required to run this role. Missing:
       {{ storage_lvm_bin_check.results | rejectattr('stat.exists') | map(attribute='item') | join(', ') }}
+    quiet: true
 
 - name: Gather EBS volume info for this instance
   amazon.aws.ec2_vol_info:
@@ -74,6 +78,7 @@
     fail_msg: >-
       A single Purpose tag named '{{ item.name }}' could not be found on '{{ ec2_instance_id }}'.
       Check the volume has been attached and tagged correctly.
+    quiet: true
   loop: "{{ storage_lvm_mount_points }}"
   loop_control:
     label: "{{ item.name }}"

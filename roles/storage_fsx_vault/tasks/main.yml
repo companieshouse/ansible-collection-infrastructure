@@ -4,6 +4,7 @@
     that:
       - lookup('vars', item, default='') | string | trim | length > 0
     fail_msg: "'{{ item }}' must be set and non-empty."
+    quiet: true
   loop:
     - storage_fsx_vault_base_path
     - storage_fsx_vault_engine_mount_point
@@ -17,6 +18,7 @@
       - lookup('env', item) | length > 0
     fail_msg: >-
       Environment variable '{{ item }}' must be set.
+    quiet: true
   loop:
     - ANSIBLE_HASHI_VAULT_ADDR
     - ANSIBLE_HASHI_VAULT_ROLE_ID
@@ -54,6 +56,7 @@
     fail_msg: >-
       'dns_servers' at '{{ storage_fsx_vault_base_path }}/configs' must be
       stored in Vault as a native, non-empty list, not a JSON-encoded string.
+    quiet: true
 
 - name: Fetch /credentials from Vault
   ansible.builtin.include_role:
@@ -98,3 +101,4 @@
     fail_msg: >-
       'domain_admins' at '{{ storage_fsx_vault_base_path }}/admins' must be
       stored in Vault as a native, non-empty list, not a JSON-encoded string.
+    quiet: true
