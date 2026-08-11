@@ -18,7 +18,7 @@ in this collection's `galaxy.yml`.
 
 ## Variables
 
-All inputs are required and validated via `meta/argument_specs.yml` — the
+All inputs are required and validated via `meta/argument_specs.yml`; the
 role will refuse to run with anything missing. All are supplied by
 `storage_fsx_vault` when the two roles are used together.
 

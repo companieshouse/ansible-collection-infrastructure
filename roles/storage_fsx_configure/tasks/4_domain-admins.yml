@@ -8,6 +8,7 @@
     fail_msg: >-
       storage_fsx_configure_domain_admins is empty
       Stopping here to avoid potentially removing every existing admin
+    quiet: true
 
 - name: Configure domain tunnel for AD authentication
   netapp.ontap.na_ontap_domain_tunnel:

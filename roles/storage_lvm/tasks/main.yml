@@ -1,0 +1,137 @@
+---
+- name: Assert required inventory variables are set
+  ansible.builtin.assert:
+    that:
+      - lookup('vars', item, default='') | string | trim | length > 0
+    fail_msg: >-
+      Required inventory variable '{{ item }}' is not set or empty.
+      Ensure the EC2 tag exists and the inventory compose block maps it correctly.
+    quiet: true
+  loop:
+    - ec2_instance_id
+  loop_control:
+    label: "{{ item }}"
+
+- name: Assert an AWS region is resolvable
+  ansible.builtin.assert:
+    that:
+      - (storage_lvm_aws_region | default('') | trim | length > 0)
+        or (lookup('env', 'AWS_REGION') | trim | length > 0)
+        or (lookup('env', 'AWS_DEFAULT_REGION') | trim | length > 0)
+        or (lookup('env', 'AWS_PROFILE') | trim | length > 0)
+    fail_msg: >-
+      No AWS region available. Export AWS_REGION (or AWS_DEFAULT_REGION, or
+      AWS_PROFILE), or set storage_lvm_aws_region explicitly. If you rely on a
+      region in the default profile of ~/.aws/config with no environment
+      variables set, set storage_lvm_aws_region; this check cannot see it.
+    quiet: true
+
+- name: Assert at least one mount has been provided
+  ansible.builtin.assert:
+    that:
+      - storage_lvm_mount_points | length > 0
+    fail_msg: "storage_lvm_mount_points must contain at least one mount definition."
+    quiet: true
+
+- name: Check required binaries are present
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  register: storage_lvm_bin_check
+  loop:
+    - /usr/sbin/lvm
+    - /usr/sbin/parted
+  loop_control:
+    label: "{{ item }}"
+
+- name: Assert required binaries are present
+  ansible.builtin.assert:
+    that:
+      - storage_lvm_bin_check.results | selectattr('stat.exists', 'equalto', true) | list | length == 2
+    fail_msg: >-
+      'lvm2' and 'parted' are required to run this role. Missing:
+      {{ storage_lvm_bin_check.results | rejectattr('stat.exists') | map(attribute='item') | join(', ') }}
+    quiet: true
+
+- name: Gather EBS volume info for this instance
+  amazon.aws.ec2_vol_info:
+    region: "{{ storage_lvm_aws_region | default(omit) }}"
+    filters:
+      attachment.instance-id: "{{ ec2_instance_id }}"
+      attachment.status: attached
+  register: storage_lvm_ebs_volumes
+  delegate_to: localhost
+  become: false
+
+- name: Debug EBS volumes
+  ansible.builtin.debug:
+    var: storage_lvm_ebs_volumes
+  when: storage_lvm_debugging_enabled | bool
+
+- name: Assert all requested Purpose tags are present on attached volumes
+  ansible.builtin.assert:
+    that:
+      - storage_lvm_ebs_volumes.volumes
+        | selectattr('tags.Purpose', 'defined')
+        | selectattr('tags.Purpose', 'equalto', item.name)
+        | list
+        | length == 1
+    fail_msg: >-
+      A single Purpose tag named '{{ item.name }}' could not be found on '{{ ec2_instance_id }}'.
+      Check the volume has been attached and tagged correctly.
+    quiet: true
+  loop: "{{ storage_lvm_mount_points }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Check which mounts already exist
+  ansible.builtin.command: findmnt --kernel --mountpoint /{{ item.name }}
+  register: storage_lvm_mount_check
+  changed_when: false
+  failed_when: false
+  loop: "{{ storage_lvm_mount_points }}"
+  loop_control:
+    label: "/{{ item.name }}"
+
+- name: Report mounts that already existed
+  ansible.builtin.debug:
+    msg: "Mount point /{{ item.0.name }} already exists, skipping"
+  loop: "{{ storage_lvm_mount_points | zip(storage_lvm_mount_check.results) | list }}"
+  loop_control:
+    label: "/{{ item.0.name }}"
+  when: item.1.rc == 0
+
+- name: Initialise the disk map
+  ansible.builtin.set_fact:
+    storage_lvm_disk_map: []
+
+- name: Build disk map from EBS Purpose tags
+  ansible.builtin.set_fact:
+    storage_lvm_disk_map: >-
+      {{
+        storage_lvm_disk_map + [{
+          'mount': item.0,
+          'volume_id': (
+            storage_lvm_ebs_volumes.volumes
+            | selectattr('tags.Purpose', 'defined')
+            | selectattr('tags.Purpose', 'equalto', item.0.name)
+            | list
+            | first
+          ).id
+        }]
+      }}
+  loop: "{{ storage_lvm_mount_points | zip(storage_lvm_mount_check.results) | list }}"
+  loop_control:
+    label: "/{{ item.0.name }}"
+  when: item.1.rc != 0
+
+- name: Debug disk map
+  ansible.builtin.debug:
+    var: storage_lvm_disk_map
+  when: storage_lvm_debugging_enabled | bool
+
+- name: Provision each mount (partition, PV, VG, LV, fs, mount)
+  ansible.builtin.include_tasks: setup_mounts.yml
+  loop: "{{ storage_lvm_disk_map }}"
+  loop_control:
+    loop_var: mapping
+    label: "/{{ mapping.mount.name }}"

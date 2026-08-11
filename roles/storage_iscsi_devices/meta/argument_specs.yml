@@ -1,0 +1,74 @@
+---
+argument_specs:
+  main:
+    short_description: Day 0 iSCSI initiator setup, target discovery and login on a RHEL EC2 host.
+    description:
+      - Sets up iSCSI using initiator from Hashicorp Vault, target discovery (optional multi-path),
+        login, and boot persistence.
+      - This is a **provisioning**, not a reconciliation role. It can be re-run,
+        but won't re-identify a host with existing live sessions.
+    options:
+      storage_iscsi_devices_vault_path:
+        type: str
+        required: true
+        description: >-
+          Vault KV path holding this host's iSCSI configuration, relative to
+          storage_iscsi_devices_vault_engine_mount_point. The secret must
+          contain iscsi_initiator_name (string) and iscsi_portal_ips (native
+          list of strings).
+      storage_iscsi_devices_vault_engine_mount_point:
+        type: str
+        required: true
+        description: >-
+          Mount point of the KV secrets engine (Path column of
+          `vault secrets list`). Prepends storage_iscsi_devices_vault_path, so
+          do not repeat it at the start of the path.
+      storage_iscsi_devices_vault_engine_version:
+        type: int
+        required: true
+        choices: [1, 2]
+        description: >-
+          KV secrets engine version. Check the Options column of
+          `vault secrets list -detailed`.
+      storage_iscsi_devices_install_packages:
+        type: bool
+        required: false
+        default: true
+        description: >-
+          Install iscsi-initiator-utils, and device-mapper-multipath when
+          multi-path is enabled. Set to false if already baked into the AMI.
+      storage_iscsi_devices_multipath:
+        type: bool
+        required: false
+        default: false
+        description: >-
+          Whether this host reaches its LUNs over more than one path.
+      storage_iscsi_devices_node_startup:
+        type: str
+        required: false
+        default: automatic
+        choices: [automatic, manual, onboot]
+        description: >-
+          Value for node.startup; 'automatic' re-establishes sessions after a
+          reboot.
+      storage_iscsi_devices_replacement_timeout:
+        type: int
+        required: false
+        description: >-
+          Value for node.session.timeo.replacement_timeout, in seconds.
+          Defaults to 5 with multi-path, 120 without.
+      storage_iscsi_devices_wipe:
+        type: bool
+        required: false
+        default: false
+        description: >-
+          Wipe every LUN visible over iSCSI with wipefs. DESTRUCTIVE: Only
+          enable for first-time provisioning of brand-new LUNs.
+      storage_iscsi_devices_allow_initiator_change:
+        type: bool
+        required: false
+        default: false
+        description: >-
+          Permit the initiator name to be rewritten on a host with live
+          sessions. Off by default, because those sessions keep the old IQN
+          across an iscsid restart. When set, the role logs sessions out first.

@@ -1,4 +1,2 @@
 ---
 vault_set_fact_skip_env_check: false
-vault_set_fact_engine_version: 1
-vault_set_fact_engine_mount_point: "kv"

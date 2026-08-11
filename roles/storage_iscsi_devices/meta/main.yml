@@ -1,0 +1,9 @@
+---
+galaxy_info:
+  standalone: false
+  role_name: storage_iscsi_devices
+  author: ls-comh
+  description: Day 0 iSCSI initiator setup, target discovery and login on a RHEL EC2 host.
+  company: Companies House
+  license: MIT
+dependencies: []

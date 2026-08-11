@@ -1,0 +1,503 @@
+---
+- name: Validate role inputs are set
+  ansible.builtin.assert:
+    that:
+      - lookup('vars', item, default='') | string | trim | length > 0
+    fail_msg: "'{{ item }}' must be set and non-empty."
+    quiet: true
+  loop:
+    - storage_iscsi_devices_vault_path
+    - storage_iscsi_devices_vault_engine_mount_point
+    - storage_iscsi_devices_vault_engine_version
+  loop_control:
+    label: "{{ item }}"
+
+- name: Assert this is a RHEL-compatible host
+  ansible.builtin.assert:
+    that:
+      - ansible_os_family == "RedHat"
+    fail_msg: >-
+      storage_iscsi_devices currently only intended for use on RHEL-family
+      hosts (for mpathconf and iscsi.service) -
+      (detected ansible_os_family='{{ ansible_os_family | default("unknown") }}').
+    quiet: true
+
+- name: Install iSCSI initiator tooling
+  ansible.builtin.package:
+    name: iscsi-initiator-utils
+    state: present
+  when: storage_iscsi_devices_install_packages | bool
+
+- name: Check iscsiadm is available
+  ansible.builtin.stat:
+    path: /usr/sbin/iscsiadm
+  register: storage_iscsi_devices_iscsiadm_stat
+
+- name: Assert iscsiadm is available
+  ansible.builtin.assert:
+    that:
+      - storage_iscsi_devices_iscsiadm_stat.stat.exists
+    fail_msg: >-
+      iscsiadm not found at /usr/sbin/iscsiadm. Install
+      iscsi-initiator-utils, or leave
+      storage_iscsi_devices_install_packages set to true.
+    quiet: true
+
+- name: Check for pre-existing iSCSI sessions
+  ansible.builtin.command:
+    cmd: iscsiadm --mode session
+  environment:
+    LANG: C
+    LC_ALL: C
+  register: storage_iscsi_devices_sessions_preexisting
+  changed_when: false
+  check_mode: false
+  failed_when:
+    # rc=21 means "no active sessions", the expected state on a new instance
+    - storage_iscsi_devices_sessions_preexisting.rc != 0
+    - storage_iscsi_devices_sessions_preexisting.rc != 21
+
+- name: Fetch iSCSI configuration from Hashicorp Vault
+  ansible.builtin.include_role:
+    name: companieshouse.infrastructure.vault_set_fact
+  vars:
+    vault_set_fact_path: "{{ storage_iscsi_devices_vault_path }}"
+    vault_set_fact_name: storage_iscsi_devices_config
+    vault_set_fact_engine_version: "{{ storage_iscsi_devices_vault_engine_version }}"
+    vault_set_fact_engine_mount_point: "{{ storage_iscsi_devices_vault_engine_mount_point }}"
+
+- name: Assert iSCSI initiator name is present in Vault config
+  ansible.builtin.assert:
+    that:
+      - storage_iscsi_devices_config.iscsi_initiator_name is defined
+      - storage_iscsi_devices_config.iscsi_initiator_name | string | trim | length > 0
+    fail_msg: >-
+      Missing 'iscsi_initiator_name' in Vault config at
+      '{{ storage_iscsi_devices_vault_path }}'.
+    quiet: true
+
+- name: Assert the iSCSI initiator name is a well-formed RFC 3720 name
+  ansible.builtin.assert:
+    that:
+      - storage_iscsi_devices_initiator_requested | length <= 223
+      - storage_iscsi_devices_initiator_requested is match('^iqn\.[0-9]{4}-[0-9]{2}\.[A-Za-z0-9.-]+(:\S+)?$')
+        or storage_iscsi_devices_initiator_requested is match('^eui\.[0-9A-Fa-f]{16}$')
+        or storage_iscsi_devices_initiator_requested is match('^naa\.[0-9A-Fa-f]{16,32}$')
+    fail_msg: >-
+      '{{ storage_iscsi_devices_initiator_requested }}' is not a valid iSCSI
+      initiator name. Expected iqn.YYYY-MM.reverse.domain[:unique],
+      eui.<16 hex digits> or naa.<16-32 hex digits>, up to 223 characters.
+      iscsid silently refuses to start with a malformed name.
+    quiet: true
+  vars:
+    storage_iscsi_devices_initiator_requested: >-
+      {{ storage_iscsi_devices_config.iscsi_initiator_name | string | trim }}
+
+- name: Assert iSCSI portal IPs are present in Vault config
+  ansible.builtin.assert:
+    that:
+      - storage_iscsi_devices_config.iscsi_portal_ips is defined
+      - storage_iscsi_devices_config.iscsi_portal_ips is sequence
+      - storage_iscsi_devices_config.iscsi_portal_ips is not string
+      - storage_iscsi_devices_config.iscsi_portal_ips | length > 0
+    fail_msg: >-
+      Missing or empty 'iscsi_portal_ips' in Vault config at
+      '{{ storage_iscsi_devices_vault_path }}'. It must be a native Vault
+      list, not JSON-encoded string.
+    quiet: true
+
+- name: Assert multipath is enabled when more than one portal is configured
+  ansible.builtin.assert:
+    that:
+      - storage_iscsi_devices_multipath | bool
+        or (storage_iscsi_devices_config.iscsi_portal_ips | length == 1)
+    fail_msg: >-
+      {{ storage_iscsi_devices_config.iscsi_portal_ips | length }} portals are
+      configured but storage_iscsi_devices_multipath is false. Without
+      multi-path, the same LUN is presented as several independent block
+      devices, and writing to more than one corrupts it. Either enable
+      multi-path, or point at a single portal.
+    quiet: true
+
+- name: Read the currently configured initiator name
+  ansible.builtin.shell: |
+    set -o pipefail
+    if [ -r /etc/iscsi/initiatorname.iscsi ]; then
+      grep -m1 '^InitiatorName=' /etc/iscsi/initiatorname.iscsi \
+        | cut -d= -f2- | tr -d '[:space:]'
+    fi
+  args:
+    executable: /bin/bash
+  register: storage_iscsi_devices_initiator_current
+  changed_when: false
+  check_mode: false
+  failed_when: false
+
+- name: Determine whether live sessions block re-identifying the host
+  ansible.builtin.set_fact:
+    storage_iscsi_devices_relogin_required: >-
+      {{ storage_iscsi_devices_initiator_current.stdout | trim | length > 0
+         and storage_iscsi_devices_initiator_current.stdout | trim
+             != storage_iscsi_devices_config.iscsi_initiator_name | trim
+         and storage_iscsi_devices_sessions_preexisting.rc == 0 }}
+
+- name: Refuse to re-identify a host that already has live sessions
+  ansible.builtin.fail:
+    msg: >-
+      Refusing to change initiator name for a host with active iSCSI
+      sessions. Configured: '{{ storage_iscsi_devices_initiator_current.stdout | trim }}'.
+      Requested: '{{ storage_iscsi_devices_config.iscsi_initiator_name | trim }}'.
+      Existing sessions keep the old IQN across an iscsid restart, so they must
+      be logged out for the change to take effect. Set
+      storage_iscsi_devices_allow_initiator_change to true and re-run
+      to get them logged out first.
+  when:
+    - storage_iscsi_devices_relogin_required | bool
+    - not storage_iscsi_devices_allow_initiator_change | bool
+
+- name: Find filesystems mounted from iSCSI devices
+  ansible.builtin.shell: |
+    set -o pipefail
+    for dev in /sys/class/iscsi_session/session*/device/target*/*/block/*; do
+      [ -e "$dev" ] || continue
+      lsblk -nro NAME,MOUNTPOINT "/dev/$(basename "$dev")" 2>/dev/null \
+        | awk 'NF > 1 {print $1" "$2}'
+    done | sort -u
+  args:
+    executable: /bin/bash
+  register: storage_iscsi_devices_mounted
+  changed_when: false
+  check_mode: false
+  when:
+    - storage_iscsi_devices_relogin_required | bool
+    - storage_iscsi_devices_allow_initiator_change | bool
+
+- name: Assert nothing is mounted before logging the sessions out
+  ansible.builtin.assert:
+    that:
+      - storage_iscsi_devices_mounted.stdout_lines | length == 0
+    fail_msg: >-
+      Refusing to log out iSCSI sessions that still have filesystems mounted:
+      {{ storage_iscsi_devices_mounted.stdout_lines | join('; ') }}.
+      Safely stop anything using them and unmount manually before re-running.
+    quiet: true
+  when:
+    - storage_iscsi_devices_relogin_required | bool
+    - storage_iscsi_devices_allow_initiator_change | bool
+
+- name: Log out live sessions so the new initiator name takes effect
+  ansible.builtin.command:
+    cmd: iscsiadm --mode node --logoutall=all
+  environment:
+    LANG: C
+    LC_ALL: C
+  register: storage_iscsi_devices_logout
+  changed_when: storage_iscsi_devices_logout.rc == 0
+  failed_when:
+    # rc=21 means "no matching sessions" i.e. it wasn't there in the first place
+    - storage_iscsi_devices_logout.rc != 0
+    - storage_iscsi_devices_logout.rc != 21
+  when:
+    - storage_iscsi_devices_relogin_required | bool
+    - storage_iscsi_devices_allow_initiator_change | bool
+
+- name: Write iSCSI initiator name configuration
+  ansible.builtin.template:
+    src: initiatorname.iscsi.j2
+    dest: /etc/iscsi/initiatorname.iscsi
+    owner: root
+    group: root
+    mode: "0600"
+  notify: Restart iscsid
+
+- name: Apply the initiator name before talking to any target
+  ansible.builtin.meta: flush_handlers
+
+- name: Ensure iSCSI services are enabled and running
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    enabled: true
+    state: started
+  loop:
+    - iscsid
+    - iscsi
+  loop_control:
+    label: "{{ item }}"
+
+- name: Configure device-mapper-multipath
+  ansible.builtin.include_tasks: multipath.yml
+  when: storage_iscsi_devices_multipath | bool
+
+- name: Discover iSCSI targets on each portal
+  ansible.builtin.command:
+    cmd: >-
+      iscsiadm --mode discovery --op update --type sendtargets
+      --portal {{ portal }}
+  environment:
+    LANG: C
+    LC_ALL: C
+  loop: "{{ storage_iscsi_devices_config.iscsi_portal_ips }}"
+  loop_control:
+    loop_var: portal
+    label: "{{ portal }}"
+  register: storage_iscsi_devices_discovery
+  changed_when: false
+  failed_when: false
+
+- name: Assert all iSCSI discoveries succeeded
+  ansible.builtin.assert:
+    that:
+      - storage_iscsi_devices_discovery_failures | length == 0
+    fail_msg: >-
+      iSCSI discovery failed on portal(s):
+      {{ storage_iscsi_devices_discovery_failures | join(', ') }}
+    quiet: true
+  when: not ansible_check_mode
+  vars:
+    storage_iscsi_devices_discovery_failures: >-
+      {{ storage_iscsi_devices_discovery.results
+         | rejectattr('rc', 'eq', 0)
+         | map(attribute='portal')
+         | list }}
+
+- name: Read the node records produced by discovery
+  ansible.builtin.command:
+    cmd: iscsiadm --mode node
+  environment:
+    LANG: C
+    LC_ALL: C
+  register: storage_iscsi_devices_node_records
+  changed_when: false
+  check_mode: false
+  failed_when: false
+
+- name: Assert discovery produced at least one node record
+  ansible.builtin.assert:
+    that:
+      - storage_iscsi_devices_node_records.stdout_lines | length > 0
+    fail_msg: >-
+      Discovery succeeded but produced no iSCSI node records. Check the target
+      has
+      ('{{ storage_iscsi_devices_config.iscsi_initiator_name | trim }}') in an
+      initiator group with LUNs mapped.
+    quiet: true
+  when: not ansible_check_mode
+
+- name: Find targets reachable on more than one portal
+  ansible.builtin.shell: |
+    set -o pipefail
+    iscsiadm --mode node 2>/dev/null \
+      | awk '{print $2}' | sort | uniq -c | awk '$1 > 1 {print $2" ("$1" paths)"}'
+  args:
+    executable: /bin/bash
+  environment:
+    LANG: C
+    LC_ALL: C
+  register: storage_iscsi_devices_multipath_targets
+  changed_when: false
+  check_mode: false
+
+- name: Assert multi-path is enabled when a target has more than one path
+  ansible.builtin.assert:
+    that:
+      - storage_iscsi_devices_multipath | bool
+        or storage_iscsi_devices_multipath_targets.stdout_lines | length == 0
+    fail_msg: >-
+      Discovery found targets reachable on more than one portal, but
+      storage_iscsi_devices_multipath is set to false:
+      {{ storage_iscsi_devices_multipath_targets.stdout_lines | join('; ') }}.
+      Logging in now would present each LUN as several independent block
+      devices, and writing to more than one would corrupt it.
+    quiet: true
+  when: not ansible_check_mode
+
+- name: Read current node startup modes
+  ansible.builtin.shell: |
+    set -o pipefail
+    iscsiadm --mode node --op show 2>/dev/null \
+      | awk -F' = ' '/^node.startup/ {print $2}' | sort -u
+  args:
+    executable: /bin/bash
+  environment:
+    LANG: C
+    LC_ALL: C
+  register: storage_iscsi_devices_startup_current
+  changed_when: false
+  check_mode: false
+  failed_when: false
+
+- name: Set node startup mode so sessions are re-established after reboot
+  ansible.builtin.command:
+    cmd: >-
+      iscsiadm --mode node --op update
+      --name node.startup --value {{ storage_iscsi_devices_node_startup }}
+  environment:
+    LANG: C
+    LC_ALL: C
+  changed_when:
+    - storage_iscsi_devices_startup_current.stdout_lines | sort
+      != [storage_iscsi_devices_node_startup]
+
+- name: Read current replacement timeouts
+  ansible.builtin.shell: |
+    set -o pipefail
+    iscsiadm --mode node --op show 2>/dev/null \
+      | awk -F' = ' '/^node.session.timeo.replacement_timeout/ {print $2}' | sort -u
+  args:
+    executable: /bin/bash
+  environment:
+    LANG: C
+    LC_ALL: C
+  register: storage_iscsi_devices_timeout_current
+  changed_when: false
+  check_mode: false
+  failed_when: false
+
+- name: Set replacement timeout appropriate to the path count
+  ansible.builtin.command:
+    cmd: >-
+      iscsiadm --mode node --op update
+      --name node.session.timeo.replacement_timeout
+      --value {{ storage_iscsi_devices_replacement_timeout }}
+  environment:
+    LANG: C
+    LC_ALL: C
+  changed_when:
+    - storage_iscsi_devices_timeout_current.stdout_lines | sort
+      != [storage_iscsi_devices_replacement_timeout | string]
+
+- name: Log in to all discovered iSCSI nodes
+  ansible.builtin.command:
+    cmd: iscsiadm --mode node --loginall=all
+  environment:
+    LANG: C
+    LC_ALL: C
+  register: storage_iscsi_devices_login
+  changed_when:
+    - storage_iscsi_devices_sessions_preexisting.rc == 21
+      or storage_iscsi_devices_relogin_required | bool
+  failed_when:
+    # rc=15 means ISCSI_ERR_SESS_EXISTS, i.e. already logged in
+    # iscsiadm keeps only the first non-zero rc across records
+    - storage_iscsi_devices_login.rc != 0
+    - storage_iscsi_devices_login.rc != 15
+
+- name: Find node records with no active session
+  ansible.builtin.shell: |
+    set -o pipefail
+    comm -23 \
+      <(iscsiadm --mode node 2>/dev/null | awk '{print $1" "$2}' | sort -u) \
+      <(iscsiadm --mode session 2>/dev/null | awk '{print $3" "$4}' | sort -u)
+  args:
+    executable: /bin/bash
+  environment:
+    LANG: C
+    LC_ALL: C
+  register: storage_iscsi_devices_missing_sessions
+  changed_when: false
+  check_mode: false
+
+- name: Assert every discovered node has an active session
+  ansible.builtin.assert:
+    that:
+      - storage_iscsi_devices_missing_sessions.stdout_lines | length == 0
+    fail_msg: >-
+      Logged in, but these node records have no session:
+      {{ storage_iscsi_devices_missing_sessions.stdout_lines | join('; ') }}.
+      Check target ACLs for this initiator, and reachability of the portal.
+    quiet: true
+  when: not ansible_check_mode
+
+- name: Rescan iSCSI sessions
+  ansible.builtin.command:
+    cmd: iscsiadm --mode session --rescan
+  environment:
+    LANG: C
+    LC_ALL: C
+  register: storage_iscsi_devices_rescan
+  changed_when: false
+  failed_when:
+    - storage_iscsi_devices_rescan.rc != 0
+    - storage_iscsi_devices_rescan.rc != 21
+
+- name: Wait for udev to finish creating the new block devices
+  ansible.builtin.command:
+    cmd: udevadm settle --timeout=60
+  changed_when: false
+
+- name: Reload multipath maps to pick up the new paths
+  ansible.builtin.command:
+    cmd: multipath -r
+  changed_when: false
+  when: storage_iscsi_devices_multipath | bool
+
+- name: Enumerate iSCSI multipath maps to wipe
+  ansible.builtin.shell: |
+    set -o pipefail
+    for dev in /sys/class/iscsi_session/session*/device/target*/*/block/*; do
+      [ -e "$dev" ] || continue
+      for holder in /sys/block/"$(basename "$dev")"/holders/dm-*; do
+        [ -r "$holder/dm/name" ] || continue
+        cat "$holder/dm/name"
+      done
+    done | sort -u
+  args:
+    executable: /bin/bash
+  register: storage_iscsi_devices_mpath_maps
+  changed_when: false
+  check_mode: false
+  when:
+    - storage_iscsi_devices_wipe | bool
+    - storage_iscsi_devices_multipath | bool
+
+- name: Enumerate single-path iSCSI block devices to wipe
+  ansible.builtin.shell: |
+    set -o pipefail
+    for dev in /sys/class/iscsi_session/session*/device/target*/*/block/*; do
+      [ -e "$dev" ] || continue
+      basename "$dev"
+    done | sort -u
+  args:
+    executable: /bin/bash
+  register: storage_iscsi_devices_disks
+  changed_when: false
+  check_mode: false
+  when:
+    - storage_iscsi_devices_wipe | bool
+    - not storage_iscsi_devices_multipath | bool
+
+- name: Build the list of devices to wipe
+  ansible.builtin.set_fact:
+    storage_iscsi_devices_wipe_targets: >-
+      {{
+        (storage_iscsi_devices_mpath_maps.stdout_lines | default([])
+         | map('regex_replace', '^', '/dev/mapper/') | list)
+        if storage_iscsi_devices_multipath | bool
+        else (storage_iscsi_devices_disks.stdout_lines | default([])
+              | map('regex_replace', '^', '/dev/') | list)
+      }}
+  when: storage_iscsi_devices_wipe | bool
+
+- name: Assert the requested wipe found devices to act on
+  ansible.builtin.assert:
+    that:
+      - storage_iscsi_devices_wipe_targets | length > 0
+    fail_msg: >-
+      storage_iscsi_devices_wipe is true but no iSCSI
+      {{ 'multipath maps were' if storage_iscsi_devices_multipath | bool
+         else 'block devices were' }} found. Check the target has LUNs mapped
+      to this initiator{{ ', and that multipathd has claimed the paths'
+                          if storage_iscsi_devices_multipath | bool else '' }}.
+    quiet: true
+  when:
+    - storage_iscsi_devices_wipe | bool
+    - not ansible_check_mode
+
+- name: Wipe iSCSI disks (DESTRUCTIVE)
+  ansible.builtin.command:
+    cmd: wipefs --all {{ item }}
+  loop: "{{ storage_iscsi_devices_wipe_targets }}"
+  loop_control:
+    label: "{{ item }}"
+  changed_when: true
+  when: storage_iscsi_devices_wipe | bool

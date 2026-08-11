@@ -1,3 +1,4 @@
 ---
-storage_fsx_vault_engine_version: 1
-storage_fsx_vault_engine_mount_point: "kv"
+# Engine mount point and version have no defaults on purpose: both are
+# site-specific and required, and passed straight through to vault_set_fact
+# (see meta/argument_specs.yml).

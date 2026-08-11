@@ -10,30 +10,39 @@ argument_specs:
         the format `{{ <fact_name>.<field> }}`.
       - In the event you need to fetch multiple paths, re-use this role with
         different `vault_set_fact_path`s and `vault_set_fact_name`s.
+      - Both the KV engine mount point and version are required.
     options:
       vault_set_fact_path:
         type: str
         required: true
-        description: Vault KV secret path
+        description: >-
+          Vault KV secret path, relative to the engine mount point. With a
+          mount point of `example-kv`, a path of `app-env/database` reads
+          `example-kv/app-env/database`.
       vault_set_fact_name:
         type: str
         required: true
         description: >-
           Chosen name to register as the Ansible fact. Must be a valid
-          identifier (letters, digits, underscores; not starting with a
-          digit) so the fact can be referenced in templates.
+          identifier (letters, digits, underscores; not starting with a digit).
+      vault_set_fact_engine_mount_point:
+        type: str
+        required: true
+        description: >-
+          Mount point of the KV secrets engine (Path column of
+          `vault secrets list`). This will prepend vault_set_fact_path.
       vault_set_fact_engine_version:
         type: int
-        required: false
-        default: 1
+        required: true
         choices: [1, 2]
         description: >-
-          KV secrets engine version (`1` or `2`)
+          KV secrets engine version. Check the Options column of
+          `vault secrets list -detailed`.
       vault_set_fact_skip_env_check:
         type: bool
         required: false
         default: false
         description: >-
           Skip the assertion that the ANSIBLE_HASHI_VAULT_* environment
-          variables are set. Authentication still occurs and still requires
-          them; use this when a calling role has already validated them.
+          variables are set. Authentication still requires them; use this
+          when a calling role has already validated them.

@@ -1,0 +1,197 @@
+---
+- name: Confirm path is not already mounted
+  # --kernel matches the pre-flight check in main.yml. Without it findmnt also
+  # reads /etc/fstab, so a stale entry for an unmounted path would trip the
+  # failure below.
+  ansible.builtin.command: findmnt --kernel --mountpoint /{{ mapping.mount.name }}
+  register: storage_lvm_mount_exists
+  changed_when: false
+  failed_when: false
+
+- name: Fail if mount point is already mounted
+  ansible.builtin.fail:
+    msg: >-
+      Mount point /{{ mapping.mount.name }} is already mounted, but was not caught
+      by the pre-flight check in main.yml. Refusing to proceed to avoid data loss.
+  when: storage_lvm_mount_exists.rc == 0
+
+- name: Resolve EBS volume ID to kernel device name
+  ansible.builtin.shell: |
+    set -o pipefail
+    serial="{{ mapping.volume_id | regex_replace('^vol-', '') }}"
+    lsblk -dno NAME,SERIAL -p \
+      | awk -v s="$serial" '$2 == s {print $1; exit}'
+  args:
+    executable: /bin/bash
+  register: storage_lvm_device_lookup
+  changed_when: false
+
+- name: Fail if device could not be resolved
+  ansible.builtin.fail:
+    msg: >-
+      Could not resolve EBS volume '{{ mapping.volume_id }}' to a kernel device.
+      Check the volume is attached and udev has settled.
+  when: storage_lvm_device_lookup.stdout | trim == ""
+
+- name: Set storage_lvm_disk fact
+  ansible.builtin.set_fact:
+    storage_lvm_disk: "{{ storage_lvm_device_lookup.stdout | trim }}"
+
+- name: Check if device is the system disk
+  ansible.builtin.shell: |
+    set -o pipefail
+    dev=$(lsblk -no NAME,MOUNTPOINT -p | awk '$2=="/" {print $1; exit}')
+    while :; do
+      parent=$(lsblk -no PKNAME "$dev" 2>/dev/null | head -n1)
+      [ -z "$parent" ] && break
+      dev="/dev/$parent"
+    done
+    echo "$dev"
+  args:
+    executable: /bin/bash
+  register: storage_lvm_system_disk_check
+  changed_when: false
+
+- name: Fail if device is the system disk
+  ansible.builtin.fail:
+    msg: >-
+      Resolved device '{{ storage_lvm_disk }}' matches the system disk
+      '{{ storage_lvm_system_disk_check.stdout | trim }}'. Refusing to proceed.
+  when: storage_lvm_disk == storage_lvm_system_disk_check.stdout | trim
+
+- name: Debug resolved device
+  ansible.builtin.debug:
+    msg:
+      - "Volume ID: {{ mapping.volume_id }}"
+      - "Resolved device: {{ storage_lvm_disk }}"
+      - "Mount: /{{ mapping.mount.name }}"
+  when: storage_lvm_debugging_enabled | bool
+
+- name: Check if disk already has partitions
+  ansible.builtin.shell: set -o pipefail && lsblk -no TYPE "{{ storage_lvm_disk }}" | grep -qx part
+  args:
+    executable: /bin/bash
+  register: storage_lvm_disk_has_partitions
+  changed_when: false
+  failed_when: false
+
+- name: Create partition with LVM flag
+  community.general.parted:
+    device: "{{ storage_lvm_disk }}"
+    number: 1
+    flags: [lvm]
+    state: present
+  when: storage_lvm_disk_has_partitions.rc != 0
+
+- name: Settle udev so the new partition device node appears
+  ansible.builtin.command: udevadm settle
+  changed_when: false
+  when: storage_lvm_disk_has_partitions.rc != 0
+
+- name: Determine partition name for this device
+  ansible.builtin.shell: |
+    set -o pipefail
+    if [ -e "{{ storage_lvm_disk }}p1" ]; then
+      echo "{{ storage_lvm_disk }}p1"
+    elif [ -e "{{ storage_lvm_disk }}1" ]; then
+      echo "{{ storage_lvm_disk }}1"
+    else
+      exit 1
+    fi
+  args:
+    executable: /bin/bash
+  register: storage_lvm_partition_name_lookup
+  changed_when: false
+
+- name: Set storage_lvm_partition_name fact
+  ansible.builtin.set_fact:
+    storage_lvm_partition_name: "{{ storage_lvm_partition_name_lookup.stdout | trim }}"
+
+- name: Debug partition name
+  ansible.builtin.debug:
+    var: storage_lvm_partition_name
+  when: storage_lvm_debugging_enabled | bool
+
+- name: Check if device is already part of a volume group
+  ansible.builtin.shell: pvs "{{ storage_lvm_partition_name }}" -o vg_name --noheadings 2>/dev/null || echo ""
+  args:
+    executable: /bin/bash
+  register: storage_lvm_pv_check
+  failed_when: false
+  changed_when: false
+
+- name: Fail if device is in wrong volume group
+  ansible.builtin.fail:
+    msg: >-
+      Device {{ storage_lvm_partition_name }} is already in volume group
+      '{{ storage_lvm_pv_check.stdout | trim }}' but should be in '{{ mapping.mount.vg }}'.
+  when:
+    - storage_lvm_pv_check.stdout | trim != ""
+    - storage_lvm_pv_check.stdout | trim != mapping.mount.vg
+
+- name: Create volume group
+  community.general.lvg:
+    vg: "{{ mapping.mount.vg }}"
+    pvs: "{{ storage_lvm_partition_name }}"
+    pesize: "{{ mapping.mount.pe_size | default(storage_lvm_pe_size) }}"
+  when: storage_lvm_pv_check.stdout | trim == ""
+
+- name: Check if logical volume exists
+  ansible.builtin.shell: lvs "{{ mapping.mount.vg }}/{{ mapping.mount.lv }}" --noheadings 2>/dev/null
+  args:
+    executable: /bin/bash
+  register: storage_lvm_lv_exists
+  failed_when: false
+  changed_when: false
+
+- name: Create logical volume
+  community.general.lvol:
+    vg: "{{ mapping.mount.vg }}"
+    lv: "{{ mapping.mount.lv }}"
+    size: 100%FREE
+  when: storage_lvm_lv_exists.rc != 0
+
+- name: Check for an existing filesystem on the logical volume
+  # -o value -s TYPE so stdout is the filesystem type itself, which is needed
+  # below to keep the fstab entry consistent with what is actually on the LV.
+  ansible.builtin.command: blkid -o value -s TYPE "/dev/mapper/{{ mapping.mount.vg }}-{{ mapping.mount.lv }}"
+  register: storage_lvm_fs_type
+  failed_when: false
+  changed_when: false
+
+- name: Format filesystem
+  community.general.filesystem:
+    fstype: "{{ mapping.mount.fstype | default(storage_lvm_fstype) }}"
+    dev: "/dev/mapper/{{ mapping.mount.vg }}-{{ mapping.mount.lv }}"
+  when: storage_lvm_fs_type.stdout | trim | length == 0
+
+- name: Set effective filesystem type
+  # Prefer the type already on the LV. Formatting is skipped when a filesystem
+  # exists, so writing the requested type into fstab regardless would produce
+  # an entry that fails to mount at boot, silently under the default 'nofail'.
+  ansible.builtin.set_fact:
+    storage_lvm_effective_fstype: >-
+      {{ storage_lvm_fs_type.stdout | trim
+         if (storage_lvm_fs_type.stdout | trim | length > 0)
+         else (mapping.mount.fstype | default(storage_lvm_fstype)) }}
+
+- name: Create mount directory
+  ansible.builtin.file:
+    path: "/{{ mapping.mount.name }}"
+    state: directory
+    mode: "{{ mapping.mount.mode | default(storage_lvm_mount_mode) }}"
+    owner: "{{ mapping.mount.owner | default(storage_lvm_mount_owner) }}"
+    group: "{{ mapping.mount.group | default(storage_lvm_mount_group) }}"
+
+- name: Get UUID of the LV
+  ansible.builtin.command: "lsblk /dev/mapper/{{ mapping.mount.vg }}-{{ mapping.mount.lv }} -no UUID"
+  register: storage_lvm_fs_uuid
+  changed_when: false
+
+- name: Mount filesystem and write to fstab
+  ansible.posix.mount:
+    path: "/{{ mapping.mount.name }}"
+    src: "UUID={{ storage_lvm_fs_uuid.stdout | trim }}"
+    fstype: "{{ storage_lvm_effective_fstype }}"
+    opts: "{{ mapping.mount.mount_opts | default(storage_lvm_mount_opts) }}"
+    state: mounted
