@@ -1,0 +1,67 @@
+---
+- name: Add amazon-cloudwatch-agent key
+  anisble.builtin.rpm_key:
+    state: present
+    key: "{{ cloudwatch_gpg_key }}"
+
+
+- name: Download amazon-cloudwatch-agent.rpm.sig file
+  ansible.builtin.get_url:
+    url: "https://s3.amazonaws.com/{{ cloudwatch_pkg }}/redhat/{{ arch_name }}/latest/{{ cloudwatch_pkg }}.rpm.sig"
+    dest: "{{ working_dir }}/amazon-cloudwatch-agent.rpm.sig"
+
+- name: Download amazon-cloudwatch-agent.rpm file
+  ansible.builtin.get_url:
+    url: https://s3.amazonaws.com/{{ cloudwatch_pkg }}/redhat/"{{ cwa_arch_name }}"/latest/{{ cloudwatch_pkg }}.rpm
+    dest: "{{ working_dir }}/{{ cloudwatch_pkg }}.rpm"
+
+
+- name: Verify cloudwatch package signature
+  command: gpg --verify {{ cloudwatch_pkg }}.rpm.sig {{ cloudwatch_pkg }}.rpm
+  register: verified_sig
+  failed_when: "'BAD' in verified_sig.stderr"
+  changed_when: false
+  args:
+    chdir: "{{ working_dir }}"
+
+- name: Install {{ cloudwatch_pkg }}.rpm on Amazon based instances
+  ansible.builtin.yum:
+    name: "{{ working_dir }}/{{ cloudwatch_pkg }}.rpm"
+    disable_gpg_check: true
+    state: present
+  when: >
+    ansible_os_family == 'RedHat' and
+    ansible_distribution == 'Amazon'
+  ignore_errors: "{{ ansible_check_mode }}"
+
+- name: Install amazon-cloudwatch-agent.}.rpm on {{ ansible_distribution }} 6/7
+  ansible.builtin.yum:
+    name: "{{ working_dir }}/{{ cloudwatch_pkg }}.rpm"
+    disable_gpg_check: true
+    state: present
+  when: >
+    ansible_os_family == 'RedHat' and (
+      ansible_distribution == 'RedHat' or
+      ansible_distribution == 'Rocky'
+    ) and (
+      ansible_distribution_major_version == '8' or
+      ansible_distribution_major_version == '7' or
+      ansible_distribution_major_version == '6'
+    )
+  ignore_errors: "{{ ansible_check_mode }}"
+
+- name: Install {{ cwa_package }}.rpm on {{ ansible_distribution }} 8/9
+  ansible.builtin.dnf:
+    name: "{{ working_dir }}/{{ cloudwatch_pkg }}.rpm"
+    disable_gpg_check: true
+    state: present
+  when: >
+    ansible_os_family == 'RedHat' and (
+      ansible_distribution == 'CentOS' or
+      ansible_distribution == 'RedHat' or
+      ansible_distribution == 'Rocky'
+    ) and (
+      ansible_distribution_major_version == '9' or
+      ansible_distribution_major_version == '8'
+    )
+  ignore_errors: "{{ ansible_check_mode }}"

@@ -1,0 +1,3 @@
+---
+cloudwatch_pkg: amazon-cloudwatch-agent
+cloudwatch_gpg_key: https://s3.amazonaws.com/amazoncloudwatch-agent/assets/amazon-cloudwatch-agent.gpg
