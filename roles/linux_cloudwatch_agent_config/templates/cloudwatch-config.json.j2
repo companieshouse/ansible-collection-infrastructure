@@ -1,0 +1,47 @@
+{
+  "agent": {
+   "metrics_collection_interval": {{ metrics_collection_interval }},
+   "region": "{{ region }}",
+   "logfile": "{{ cloudwatch_agent_log_file }}",
+   "debug": false,
+   "run_as_user": "{{ cw_agent_user }}",
+   "omit_hostname": true
+  },
+  {% if cw_log_files is defined -%}
+  "logs": {
+    "logs_collected": {
+      "files": {
+        "collect_list": [
+          {% for logname, logdata in cw_log_files.items() -%}
+          {
+              "file_path": "{{ log_file_path_prefix |  default("") }}{{ logdata.file_path | default(default_log_path) }}/{{ logdata.file_name | default(logname) }}",
+              "log_group_name": "{{ logdata.log_group_name | default(default_log_group_name) }}",
+              "log_stream_name": "{instance_id}_{hostname}",
+              "timezone": "Local"
+          }{% if not loop.last -%},{% endif -%}
+          {% endfor -%}
+        ]
+      }
+    },
+    "log_stream_name": "{instance_id}_{hostname}"
+  }{% if cw_collect_metrics is defined %},{% endif %}
+  {% endif -%}
+  {% if cw_collect_metrics is defined -%}
+  "metrics": {
+    "append_dimensions": {
+      {% if cw_asg_level_metrics is defined -%}
+      "AutoScalingGroupName": "${aws:AutoScalingGroupName}",
+      {% endif -%}
+      "InstanceId": "${aws:InstanceId}"
+    },
+    {% if cw_asg_level_metrics is defined -%}
+    "aggregation_dimensions": [["AutoScalingGroupName"]],
+    {% endif -%}
+    "force_flush_interval": {{ force_flush_interval }},
+    {% if cw_namespace is defined -%}
+    "namespace": "{{ cw_namespace }}",
+    {% endif -%}
+    "metrics_collected": {{ cw_collect_metrics | to_nice_json | default({} )}}
+  }
+  {%- endif %}
+}
