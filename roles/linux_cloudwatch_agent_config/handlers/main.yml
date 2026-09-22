@@ -1,0 +1,4 @@
+- name: Reload CloudWatch Agent 
+  ansible.builtin.command:
+    cmd: "{{ cloudwatch_agent_ctl }} -a fetch-config -m ec2 -c file:/tmp/amazon-cloudwatch-agent.json -s"
+  when: ansible_virtualization_type != "docker"

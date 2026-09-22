@@ -1,0 +1,10 @@
+arch_names: {
+  "x86_64": "amd64",
+  "aarch64": "arm64"
+}
+
+package_gpg: "https://amazoncloudwatch-agent.s3.amazonaws.com/assets/amazon-cloudwatch-agent.gpg"
+
+global_downloads_timeout: 240
+global_downloads_retries: 5
+global_downloads_delay: 2

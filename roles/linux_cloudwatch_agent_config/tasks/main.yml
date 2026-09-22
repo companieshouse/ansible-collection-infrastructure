@@ -1,0 +1,27 @@
+---
+
+- name: Determine ansible vars
+  ansible.builtin.debug: 
+    msg:
+      - "ansible_os_family = {{ ansible_os_family }}"
+      - "ansible_distribution = {{ ansible_distribution }}"
+      - "anisble_distribution_major_version = {{ ansible_distribution_major_version }}"
+      - "ansible_distribution_release = {{ ansible_distribution_release }}"
+
+- name: Set architecture
+  set_fact:
+    arch_name: "{{ arch_names.get(ansible_architecture) }}"
+
+- name: Set variables for {{ ansible_distribution | lower }}
+  include_vars: "{{ item }}"
+  with_first_found:
+     - "{{ ansible_distribution | lower }}-{{ ansible_distribution_major_version }}.yml"
+     - "{{ ansible_distribution | lower }}.yml"
+     - "main.yml"
+  when: >
+    ansible_os_family == 'RedHat' or ansible_os_family == 'Ubuntu'
+
+- name: Trigger RHEL10 cloudwatch agent install task
+  include_tasks: "install-{{ansible_os_family | lower }}-10.yml"
+  when: >
+    ansible_os_family == 'RedHat' and ansible_distribution_major_version == '10'
