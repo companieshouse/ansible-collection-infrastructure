@@ -12,26 +12,16 @@
   set_fact:
     arch_name: "{{ arch_names.get(ansible_architecture) }}"
 
-- name: Set variables
+- name: Set variables for {{ ansible_distribution | lower }}
   include_vars: "{{ item }}"
   with_first_found:
      - "{{ ansible_distribution | lower }}-{{ ansible_distribution_major_version }}.yml"
      - "{{ ansible_distribution | lower }}.yml"
      - "main.yml"
   when: >
-    ansible_os_family = 'RedHat' or ansible_os_family = 'Ubuntu'
+    ansible_os_family == 'RedHat' or ansible_os_family == 'Ubuntu'
 
-- name: Trigger cloudwatch agent install task
-  include_tasks: "install-{{ansible_so_family | lower }}.yml"
+- name: Trigger RHEL10 cloudwatch agent install task
+  include_tasks: "install-{{ansible_os_family | lower }}-10.yml"
   when: >
-    ansible_os_family = 'RedHat' or ansible_os_family = 'Ubuntu'
-
-- name: Trigger cloudwatch agent configuration task
-  include_tasks: "configure.yml"
-
-- name: Trigger cloudwatch agent template deployment task
-  include_tasks: "template.yml"
-
-
-
-  
+    ansible_os_family == 'RedHat' and ansible_distribution_major_version == '10'
