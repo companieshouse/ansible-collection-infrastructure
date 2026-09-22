@@ -1,0 +1,3 @@
+---
+s3_bucket: s3://shared-services.eu-west-2.resources.ch.gov.uk/pcplus/
+afd_install_file: pcplus/afd_install.tar.gz
