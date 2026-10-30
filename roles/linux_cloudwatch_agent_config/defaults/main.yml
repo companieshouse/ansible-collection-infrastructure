@@ -1,0 +1,5 @@
+linux_cloudwatch_agent_config_cloudwatch_agent_ctl: "/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl"
+linux_cloudwatch_agent_config_cloudwatch_config_path: "/opt/aws/amazon-cloudwatch-agent/etc/"
+linux_cloudwatch_agent_config_cloudwatch_config_file: "amazon-cloudwatch-agent.json"
+
+linux_cloudwatch_agent_config_working_dir: "/tmp/"
