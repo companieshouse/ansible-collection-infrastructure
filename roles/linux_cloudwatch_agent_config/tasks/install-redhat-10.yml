@@ -42,7 +42,7 @@
 
 - name: Download amazon-cloudwatch-agent.rpm file if fingeprint matches
   ansible.builtin.get_url:
-    url: "https://amazoncloudwatch-agent.s3.amazonaws.com/redhat/{{ linux_cloudwatch_agent_config_arch_name }}/latest/{{ linux_cloudwatch_agent_config_cloudwatch_pkg }}.rpm"
+    url: "https://amazoncloudwatch-agent.s3.amazonaws.com/redhat/{{ linux_cloudwatch_agent_config_arch_name }}/latest/amazon-cloudwatch-agent.rpm"
     dest: "{{ linux_cloudwatch_agent_config_working_dir }}/{{ linux_cloudwatch_agent_config_cloudwatch_pkg }}.rpm"
     mode: "0600"
   when: gpg_fingerprint.stdout == doc_fingerprint.stdout
