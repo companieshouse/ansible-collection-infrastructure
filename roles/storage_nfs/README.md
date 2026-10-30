@@ -1,5 +1,4 @@
 # Role: Storage NFS | ansible-collection-infrastructure
-## WIP Released for Testing within CH Projects
 
 Installs NFS client utilities and mounts one or more NFS exports,
 creating mount point directories, updating `/etc/fstab`,

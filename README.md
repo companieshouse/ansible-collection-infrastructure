@@ -19,16 +19,21 @@ A collection of Ansible roles used frequently in Companies House infrastructure 
 | [`linux_reboot`](roles/linux_reboot/README.md) | Reboot a Linux host and wait for it to come back. |
 | [`linux_root_rand_pass`](roles/linux_root_rand_pass/README.md) | Set a random, unrecorded password on the root account, if not already set. |
 
-### Storage - WIP Released for Testing within CH Projects
+### Storage
 
 | Role | Description |
 |---|---|
-| [`storage_data_vol`](roles/storage_data_vol/README.md) | Format and mount a single block device on a Linux host. |
 | [`storage_fsx_configure`](roles/storage_fsx_configure/README.md) | Configures an Amazon FSx (NetApp ONTAP) file system. |
 | [`storage_fsx_vault`](roles/storage_fsx_vault/README.md) | Loads FSx variables from HashiCorp Vault and sets them as facts (uses `vault_set_fact`). |
 | [`storage_iscsi_devices`](roles/storage_iscsi_devices/README.md) | Day 0 iSCSI initiator setup, target discovery and login on a Linux host. |
 | [`storage_lvm`](roles/storage_lvm/README.md) | Provision LVM-backed mount points on an EC2 host using EBS `Purpose` tags. |
 | [`storage_nfs`](roles/storage_nfs/README.md) | Sets up NFS tools and mounts one or more NFS exports. |
+
+### Storage - WIP Released for Testing within CH Projects
+
+| Role | Description |
+|---|---|
+| [`storage_data_vol`](roles/storage_data_vol/README.md) | Format and mount a single block device on a Linux host. |
 
 ## Requirements
 
