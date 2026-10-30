@@ -472,6 +472,30 @@
   changed_when: false
   when: storage_iscsi_devices_multipath | bool
 
+- name: Wait for multipathd to claim multi-paths
+  ansible.builtin.shell: |
+    total=0; claimed=0
+    for dev in /sys/class/iscsi_session/session*/device/target*/*/block/*; do
+      [ -e "$dev" ] || continue
+      total=$((total + 1))
+      for h in /sys/block/"$(basename "$dev")"/holders/dm-*; do
+        [ -e "$h" ] && claimed=$((claimed + 1)) && break
+      done
+    done
+    echo "$claimed of $total iSCSI paths claimed by multipath"
+  args:
+    executable: /bin/bash
+  register: storage_iscsi_devices_claimed
+  changed_when: false
+  retries: 24
+  delay: 5
+  until:
+    - (storage_iscsi_devices_claimed.stdout.split()[2] | int) > 0
+    - storage_iscsi_devices_claimed.stdout.split()[0] == storage_iscsi_devices_claimed.stdout.split()[2]
+  when:
+    - storage_iscsi_devices_multipath | bool
+    - not ansible_check_mode
+
 - name: Enumerate iSCSI multipath maps to wipe
   ansible.builtin.shell: |
     set -o pipefail
