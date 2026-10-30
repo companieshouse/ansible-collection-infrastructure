@@ -35,6 +35,7 @@ A secret with the following fields:
 | `storage_iscsi_devices_multipath` | no | `false` | Whether the host reaches LUNs over multi-path |
 | `storage_iscsi_devices_node_startup` | no | `automatic` | Value for `node.startup` |
 | `storage_iscsi_devices_replacement_timeout` | no | `5` multipath, `120` single path | `node.session.timeo.replacement_timeout`, seconds |
+| `storage_iscsi_devices_nr_sessions` | no | `1` | `node.session.nr_sessions`, sessions per target; above `1` requires multi-path |
 | `storage_iscsi_devices_wipe` | no | `false` | **Destructive:** wipe discovered LUNs with `wipefs` |
 | `storage_iscsi_devices_allow_initiator_change` | no | `false` | Permit an IQN change on a host with live sessions |
 

@@ -119,6 +119,19 @@
       multi-path, or point at a single portal.
     quiet: true
 
+- name: Assert the sessions per target count is valid for the path mode
+  ansible.builtin.assert:
+    that:
+      - storage_iscsi_devices_nr_sessions | int >= 1
+      - storage_iscsi_devices_multipath | bool
+        or storage_iscsi_devices_nr_sessions | int == 1
+    fail_msg: >-
+      storage_iscsi_devices_nr_sessions is
+      '{{ storage_iscsi_devices_nr_sessions }}'. It must be at least 1, and
+      values above 1 require storage_iscsi_devices_multipath, because each
+      extra session presents every LUN as another independent block device.
+    quiet: true
+
 - name: Read the currently configured initiator name
   ansible.builtin.shell: |
     set -o pipefail
@@ -365,6 +378,34 @@
   changed_when:
     - storage_iscsi_devices_timeout_current.stdout_lines | sort
       != [storage_iscsi_devices_replacement_timeout | string]
+
+- name: Read current sessions per target
+  ansible.builtin.shell: |
+    set -o pipefail
+    iscsiadm --mode node --op show 2>/dev/null \
+      | awk -F' = ' '/^node.session.nr_sessions/ {print $2}' | sort -u
+  args:
+    executable: /bin/bash
+  environment:
+    LANG: C
+    LC_ALL: C
+  register: storage_iscsi_devices_nr_sessions_current
+  changed_when: false
+  check_mode: false
+  failed_when: false
+
+- name: Set sessions per target
+  ansible.builtin.command:
+    cmd: >-
+      iscsiadm --mode node --op update
+      --name node.session.nr_sessions
+      --value {{ storage_iscsi_devices_nr_sessions }}
+  environment:
+    LANG: C
+    LC_ALL: C
+  changed_when:
+    - storage_iscsi_devices_nr_sessions_current.stdout_lines | sort
+      != [storage_iscsi_devices_nr_sessions | string]
 
 - name: Log in to all discovered iSCSI nodes
   ansible.builtin.command:

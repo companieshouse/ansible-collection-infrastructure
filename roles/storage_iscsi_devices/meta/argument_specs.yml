@@ -57,6 +57,14 @@ argument_specs:
         description: >-
           Value for node.session.timeo.replacement_timeout, in seconds.
           Defaults to 5 with multi-path, 120 without.
+      storage_iscsi_devices_nr_sessions:
+        type: int
+        required: false
+        default: 1
+        description: >-
+          Value for node.session.nr_sessions, the number of sessions opened
+          to each target at login. Values above 1 require multi-path. Applies
+          at login, so hosts with live sessions keep their current count.
       storage_iscsi_devices_wipe:
         type: bool
         required: false

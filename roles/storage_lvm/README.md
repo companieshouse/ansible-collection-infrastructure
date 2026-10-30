@@ -43,9 +43,9 @@ At least one definition is required in `storage_lvm_mount_points`.
 | `fstype` | no | `storage_lvm_fstype` | Filesystem type |
 | `mount_opts` | no | `storage_lvm_mount_opts` | Mount options passed to `mount(8)` and written to `/etc/fstab` |
 | `pe_size` | no | `storage_lvm_pe_size` | Physical extent size for the VG, in MB |
-| `owner` | no | `storage_lvm_mount_owner` | Owner of the mount point directory |
-| `group` | no | `storage_lvm_mount_group` | Group of the mount point directory |
-| `mode` | no | `storage_lvm_mount_mode` | Mode of the mount point directory |
+| `owner` | no | `storage_lvm_mount_owner` | Owner of the mounted filesystem root |
+| `group` | no | `storage_lvm_mount_group` | Group of the mounted filesystem root |
+| `mode` | no | `storage_lvm_mount_mode` | Mode of the mounted filesystem root |
 
 Role-level variables:
 
@@ -57,12 +57,12 @@ Role-level variables:
 | `storage_lvm_fstype` | no | `xfs` | Default filesystem type |
 | `storage_lvm_mount_opts` | no | `defaults,nofail` | Default mount options |
 | `storage_lvm_pe_size` | no | `4` | Default physical extent size, MB |
-| `storage_lvm_mount_owner` | no | `root` | Default mount directory owner |
-| `storage_lvm_mount_group` | no | `root` | Default mount directory group |
-| `storage_lvm_mount_mode` | no | `0755` | Default mount directory mode |
+| `storage_lvm_mount_owner` | no | `root` | Default owner of the mounted filesystem root |
+| `storage_lvm_mount_group` | no | `root` | Default group of the mounted filesystem root |
+| `storage_lvm_mount_mode` | no | `0755` | Default mode of the mounted filesystem root |
 
-Note: `owner`/`group`/`mode` only apply to the mount point directory,
-they will *not* change permissions for the mounted data.
+Note: `owner`/`group`/`mode` are applied to the root of the filesystem
+when first provisioned, they're not re-applied to existing mounts.
 
 ## Terraform
 

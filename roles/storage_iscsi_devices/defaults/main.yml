@@ -7,6 +7,7 @@ storage_iscsi_devices_multipath: false
 
 storage_iscsi_devices_node_startup: automatic
 storage_iscsi_devices_replacement_timeout: "{{ 5 if storage_iscsi_devices_multipath | bool else 120 }}"
+storage_iscsi_devices_nr_sessions: 1
 
 # DESTRUCTIVE
 storage_iscsi_devices_wipe: false
