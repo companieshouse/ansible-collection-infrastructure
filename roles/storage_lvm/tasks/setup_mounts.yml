@@ -179,9 +179,7 @@
   ansible.builtin.file:
     path: "/{{ mapping.mount.name }}"
     state: directory
-    mode: "{{ mapping.mount.mode | default(storage_lvm_mount_mode) }}"
-    owner: "{{ mapping.mount.owner | default(storage_lvm_mount_owner) }}"
-    group: "{{ mapping.mount.group | default(storage_lvm_mount_group) }}"
+    mode: "0755"
 
 - name: Get UUID of the LV
   ansible.builtin.command: "lsblk /dev/mapper/{{ mapping.mount.vg }}-{{ mapping.mount.lv }} -no UUID"
@@ -195,3 +193,11 @@
     fstype: "{{ storage_lvm_effective_fstype }}"
     opts: "{{ mapping.mount.mount_opts | default(storage_lvm_mount_opts) }}"
     state: mounted
+
+- name: Set ownership and mode on the mounted filesystem root
+  ansible.builtin.file:
+    path: "/{{ mapping.mount.name }}"
+    state: directory
+    mode: "{{ mapping.mount.mode | default(storage_lvm_mount_mode) }}"
+    owner: "{{ mapping.mount.owner | default(storage_lvm_mount_owner) }}"
+    group: "{{ mapping.mount.group | default(storage_lvm_mount_group) }}"

@@ -41,16 +41,27 @@
     enabled: true
     state: started
 
-- name: Ensure mount point directories exist
-  ansible.builtin.file:
-    path: "{{ item.mount_point }}"
-    state: directory
-    owner: "{{ item.owner | default(storage_nfs_mount_owner) }}"
-    group: "{{ item.group | default(storage_nfs_mount_group) }}"
-    mode: "{{ item.mode | default(storage_nfs_mount_mode) }}"
+- name: Check which points are already mounted
+  ansible.builtin.command: findmnt --kernel --mountpoint {{ item.mount_point | quote }}
+  register: storage_nfs_mount_check
+  changed_when: false
+  failed_when: false
+  check_mode: false
   loop: "{{ storage_nfs_mounts }}"
   loop_control:
     label: "{{ item.mount_point }}"
+
+- name: Ensure mount point directories exist
+  ansible.builtin.file:
+    path: "{{ item.0.mount_point }}"
+    state: directory
+    owner: "{{ item.0.owner | default(storage_nfs_mount_owner) }}"
+    group: "{{ item.0.group | default(storage_nfs_mount_group) }}"
+    mode: "{{ item.0.mode | default(storage_nfs_mount_mode) }}"
+  loop: "{{ storage_nfs_mounts | zip(storage_nfs_mount_check.results) | list }}"
+  loop_control:
+    label: "{{ item.0.mount_point }}"
+  when: item.1.rc != 0
 
 - name: Configure NFS mounts in fstab and mount them
   ansible.posix.mount:

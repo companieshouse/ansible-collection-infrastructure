@@ -51,19 +51,19 @@ argument_specs:
             type: str
             required: false
             description: >-
-              Permissions for the mount directory.
+              Permissions for the mounted filesystem root.
               Defaults to storage_lvm_mount_mode.
           owner:
             type: str
             required: false
             description: >-
-              Owning user for the mount directory.
+              Owning user of the mounted filesystem root.
               Defaults to storage_lvm_mount_owner.
           group:
             type: str
             required: false
             description: >-
-              Owning group for the mount directory.
+              Owning group of the mounted filesystem root.
               Defaults to storage_lvm_mount_group.
 
       storage_lvm_aws_region:
@@ -95,14 +95,14 @@ argument_specs:
         type: str
         required: false
         default: "0755"
-        description: Default permissions for mount directories.
+        description: Default permissions for mounted filesystem roots.
       storage_lvm_mount_owner:
         type: str
         required: false
         default: root
-        description: Default owning user for mount directories.
+        description: Default owning user of mounted filesystem roots.
       storage_lvm_mount_group:
         type: str
         required: false
         default: root
-        description: Default owning group for mount directories.
+        description: Default owning group of mounted filesystem roots.

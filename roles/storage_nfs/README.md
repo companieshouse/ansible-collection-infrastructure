@@ -35,7 +35,10 @@ Each entry in `storage_nfs_mounts` takes:
 | `opts` | no | `storage_nfs_mount_opts` | NFS mount options |
 
 Note: `owner`/`group`/`mode` apply to the local mount-point
-directory, they will *not* change permissions on the mounted data.
+directory. They will *not* change permissions on mounted data.
+
+Permissions on exported data should be done on the NFS server,
+for example in FSx set `user_id`, `group_id` and `unix_permissions`).
 
 ## Usage
 
@@ -57,15 +60,15 @@ directory, they will *not* change permissions on the mounted data.
 If you want to fetch definitions from vault, use the `vault_set_fact`
 role and pass the established facts to `storage_nfs` e.g.
 ```yaml
-- hosts: localhost
-  tasks:
-    - name: Fetch NFS mount definitions from Vault
-      ansible.builtin.include_role:
-        name: companieshouse.infrastructure.vault_set_fact
-      vars:
-        vault_set_fact_path: "secret/app/nfs"
-        vault_set_fact_name: "app_nfs"
+- hosts: nfs_clients
   roles:
+    - role: companieshouse.infrastructure.vault_set_fact
+      vars:
+        vault_set_fact_engine_mount_point: example-kv
+        vault_set_fact_engine_version: 1
+        vault_set_fact_path: "nfs/{{ inventory_hostname }}"
+        vault_set_fact_name: app_nfs
+
     - role: companieshouse.infrastructure.storage_nfs
       vars:
         storage_nfs_mounts: "{{ app_nfs.mounts }}"
