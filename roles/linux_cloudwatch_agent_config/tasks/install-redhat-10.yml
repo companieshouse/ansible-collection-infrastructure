@@ -1,0 +1,62 @@
+---
+- name: Download amazon-cloudwatch-agent public key
+  ansible.builtin.get_url:
+    url: "https://amazoncloudwatch-agent.s3.amazonaws.com/assets/amazon-cloudwatch-agent.gpg"
+    dest: "{{ working_dir }}/amazon-cloudwatch-agent.gpg"
+    mode: "0600"
+
+- name: Download amazon-cloudwatch-agent.rpm.sig file
+  ansible.builtin.get_url:
+    url: "https://amazoncloudwatch-agent.s3.amazonaws.com/redhat/{{ arch_name }}/latest/{{ cloudwatch_pkg }}.rpm.sig"
+    dest: "{{ working_dir }}/amazon-cloudwatch-agent.rpm.sig"
+    mode: "0600"
+
+- name: Get fingerprint from amazon-cloudwatch-agent public key # noqa: no-changed-when
+  ansible.builtin.shell:
+    cmd: |
+     set -o pipefail
+     sq packet dump amazon-cloudwatch-agent.gpg | grep Fingerprint | awk '{print $NF}'
+  register: linux_cloudwatch_agent_config_gpg_fingerprint
+  args:
+    chdir: "{{ linux_cloudwatch_agent_config_working_dir }}"
+
+- name: Debug gpg_fingerprint
+  ansible.builtin.debug:
+    var: linux_cloudwatch_agent_config_gpg_fingerprint.stdout
+
+- name: Get fingerprint from AWS documentation # noqa: no-changed-when
+  ansible.builtin.shell:
+    cmd: |
+     set -o pipefail
+     lynx -dump -nolist https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/verify-CloudWatch-Agent-Package-Signature.html |
+     grep -m 1 -A 1 "The fingerprint string should" |
+     tail -n 1 |
+     tr -d " "
+  register: linux_cloudwatch_agent_config_oc_fingerprint
+  args:
+    chdir: "{{ linux_cloudwatch_agent_config_working_dir }}"
+
+- name: Debug gpg_fingerprint
+  ansible.builtin.debug:
+    var: linux_cloudwatch_agent_config_doc_fingerprint.stdout
+
+- name: Download amazon-cloudwatch-agent.rpm file if fingeprint matches
+  ansible.builtin.get_url:
+    url: "https://amazoncloudwatch-agent.s3.amazonaws.com/redhat/{{ linux_cloudwatch_agent_config_arch_name }}/latest/{{ linux_cloudwatch_agent_config_cloudwatch_pkg }}.rpm"
+    dest: "{{ linux_cloudwatch_agent_config_working_dir }}/{{ linux_cloudwatch_agent_config_cloudwatch_pkg }}.rpm"
+    mode: "0600"
+  when: gpg_fingerprint.stdout == doc_fingerprint.stdout
+
+- name: Install amazon-cloudwatch-agent.rpm on RHEL 10
+  ansible.builtin.dnf:
+    name: "{{ linux_cloudwatch_agent_config_working_dir }}/{{ linux_cloudwatch_agent_config_cloudwatch_pkg }}.rpm"
+    disable_gpg_check: true
+    state: present
+  when: >
+    ansible_os_family == 'RedHat' and (
+      ansible_distribution == 'RedHat' or
+      ansible_distribution == 'Rocky'
+    ) and (
+      ansible_distribution_major_version == '10'
+    )
+  ignore_errors: "{{ ansible_check_mode }}"
