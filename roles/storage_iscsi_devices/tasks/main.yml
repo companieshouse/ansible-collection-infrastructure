@@ -560,7 +560,7 @@
 
 - name: Wipe iSCSI disks (DESTRUCTIVE)
   ansible.builtin.command:
-    cmd: wipefs --all {{ item }}
+    cmd: wipefs --force --all {{ item }}
   loop: "{{ storage_iscsi_devices_wipe_targets }}"
   loop_control:
     label: "{{ item }}"
