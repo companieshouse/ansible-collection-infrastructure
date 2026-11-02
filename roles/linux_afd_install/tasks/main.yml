@@ -29,11 +29,11 @@
     state: directory
     mode: '0755'
 
-- name: Determine current year
+- name: Determine current year #noqa[no-changed-when]
   ansible.builtin.command: date +%Y
   register: linux_afd_install_current_year
 
-- name: Determine current quarter
+- name: Determine current quarter #noqa[no-changed-when]
   ansible.builtin.command: date +%q
   register: linux_afd_install_current_quarter
 
