@@ -4,4 +4,4 @@ linux_afd_install_file: afd_install.tar.gz
 linux_afd_install_dir: /opt/pcplus
 linux_afd_install_tmp: /tmp
 
-linux_afd_install_pcplus_license: pcplus.lic
+linux_afd_install_pcplus_license_file: pcplus.lic
