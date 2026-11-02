@@ -1,0 +1,7 @@
+---
+linux_afd_install_s3_bucket: s3://shared-services.eu-west-2.resources.ch.gov.uk/pcplus/
+linux_afd_install_file: afd_install.tar.gz
+linux_afd_install_dir: /opt/pcplus
+linux_afd_install_tmp: /tmp
+
+linux_afd_install_pcplus_license: pcplus.lic
