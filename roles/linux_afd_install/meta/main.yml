@@ -6,6 +6,5 @@ galaxy_info:
   description: Install AFD Postcode Lookup software and perfrom test lookup
   company: Companies House
   license: MIT
-dependencies: [
-  amazon.aws
-]
+dependencies: 
+  - amazon.aws
