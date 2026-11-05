@@ -1,0 +1,93 @@
+---
+- name: Install lynx browser if not present
+  ansible.builtin.package:
+    name:
+      - lynx
+    state: present
+
+- name: Create /opt/pcplus directory if it does not exist
+  ansible.builtin.file:
+    path: /opt/pcplus
+    state: directory
+    mode: '0755'
+
+- name: Pull AFD Postcode lookup files from S3
+  amazon.aws.s3_object:
+    mode: get
+    bucket: "{{ s3_bucket }}"
+    object: "{{ afd_install_file }}"
+    dest: /tmp
+
+- name: Extract AFD binaries to /opt/pcplus directory
+  ansible.builtin.unarchive:
+    src: "/tmp/{{ afd_install_file }}"
+    dest: /opt/pcplus
+
+- name: Ensure data directory exists
+  ansible.builtin.file:
+    path: /opt/pcplus/data
+    state: directory
+    mode: '0755'
+
+- name: Determine current year
+  ansible.builtin.command: date +%Y
+  register: current_year
+
+- name: Determine current quarter
+  ansible.builtin.command: date +%q
+  register: current_quarter
+
+- name: Set data fact
+  ansible.builtin.set_fact:
+    current_afd_data: "{{ current_year }}_{{ current_quarter }}"
+
+- name: Check if current quarter/year AFD data exists in S3
+  amazon.aws.s3_object:
+    mode: list
+    bucket: "{{ s3_bucket }}"
+    object: "{{ current_afd_data }}"
+  register: data_dir_exists
+
+- name: List current data files
+  amazon.aws.s3_object:
+    mode: list
+    bucket: "{{ s3_bucket }}"
+    prefix: "{{ current_afd_data }}"
+  register: data_files
+
+- name: Populate data directory with files from latest quarter
+  amazon.aws.s3_object:
+    mode: get
+    bucket: "{{ s3_bucket }}"
+    object: "{{ item }}"
+    dest: /opt/pcplus/data
+  with_items: "{{ data_files.s3_keys }}"
+
+- name: Locate pcplus license
+  amazon.aws.s3_object:
+    mode: list
+    bucket: "{{ s3_bucket }}"
+    object: pcplus.lic
+  register: pcplus_license
+
+- name: Download pcplus license
+  amazon.aws.s3_object:
+    mode: get
+    bucket: "{{ s3_bucket }}"
+    object: "{{ pcplus_license }}"
+    dest: /opt/pcplus/data/
+
+- name: Perform test lookup
+  block:
+    - name: Get latest test postcode from AFD site
+      ansible.bultin.shell: lynx -dump -nolist https://www.afd.co.uk/data-news/ | grep -A 2 \(Q.$(date +%q.%y)\) | tail -n 1
+      register: current_postcode
+
+    - name: Test lookup with retrieved postcode
+      ansible.builtin.shell: /opt/pcplus/bin_linux64/console/addresslookup postcode="{{ current_postcode }}" | awk 'NR==7'
+      register: test_output
+
+    - name: Confirm lookup success
+      ansible.builtin.debug:
+        msg: "Test successfull!"
+      when: test_output is search("{{ current_postcode }}")
