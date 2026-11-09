@@ -1,5 +1,4 @@
 # Role: Storage LVM | ansible-collection-infrastructure
-## WIP Released for Testing within CH Projects
 
 Provisions LVM-backed mount points on an EC2 host, by creating a
 partition, physical volume, volume group, logical volume, and

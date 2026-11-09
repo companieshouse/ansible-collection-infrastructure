@@ -7,7 +7,7 @@ argument_specs:
         Ansible facts.
       - Lookups use `no_log` to avoid secrets appearing in output.
       - Subsequent tasks and roles can make use of individual fields, using
-        the format `{{ <fact_name>.<field> }}`.
+        the format `<fact_name>.<field>`.
       - In the event you need to fetch multiple paths, re-use this role with
         different `vault_set_fact_path`s and `vault_set_fact_name`s.
       - Both the KV engine mount point and version are required.

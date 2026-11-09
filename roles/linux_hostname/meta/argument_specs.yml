@@ -3,7 +3,7 @@ argument_specs:
   main:
     short_description: Set a Linux host's FQDN from EC2 tag-derived inventory variables.
     description:
-      - Sets the system hostname to '{{ ec2_hostname }}.{{ ec2_zone }}'.
+      - Sets the system hostname to '<ec2_hostname>.<ec2_zone>'.
       - "  - ec2_hostname: the short hostname (required, non-empty string)"
       - "  - ec2_zone: the DNS zone to append (required, non-empty string)"
       - >-

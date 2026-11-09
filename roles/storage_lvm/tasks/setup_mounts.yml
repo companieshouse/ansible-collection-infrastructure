@@ -18,7 +18,7 @@
 - name: Resolve EBS volume ID to kernel device name
   ansible.builtin.shell: |
     set -o pipefail
-    serial="{{ mapping.volume_id | regex_replace('^vol-', '') }}"
+    serial="{{ mapping.volume_id | replace('-', '') }}"
     lsblk -dno NAME,SERIAL -p \
       | awk -v s="$serial" '$2 == s {print $1; exit}'
   args:

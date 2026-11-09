@@ -20,6 +20,18 @@
     storage_fsx_configure_cifs_security_current.msg.records | default([]) | length == 0
     or not (storage_fsx_configure_cifs_security_current.msg.records[0].encryption_required_for_dc_connections | bool)
 
+- name: Require signing for LDAP communications.
+  netapp.ontap.na_ontap_rest_cli:
+    command: "vserver/cifs/security"
+    verb: PATCH
+    params:
+      vserver: "{{ storage_fsx_configure_vserver }}"
+    body:
+      session_security_for_ad_ldap: true
+  when: >-
+    storage_fsx_configure_cifs_security_current.msg.records | default([]) | length == 0
+    or not (storage_fsx_configure_cifs_security_current.msg.records[0].session_security_for_ad_ldap | bool)
+
 - name: Check existing CIFS server config
   netapp.ontap.na_ontap_rest_info:
     gather_subset:

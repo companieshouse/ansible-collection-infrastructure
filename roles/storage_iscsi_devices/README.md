@@ -1,5 +1,4 @@
 # Role: Storage iSCSI Devices | ansible-collection-infrastructure
-## WIP Released for Testing within CH Projects
 
 Sets up iSCSI using initiator from Hashicorp Vault, target discovery (optional multi-path), login, and boot persistence.
 
