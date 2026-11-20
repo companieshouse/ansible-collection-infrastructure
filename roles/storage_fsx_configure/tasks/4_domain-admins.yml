@@ -12,11 +12,23 @@
 
 - name: Configure domain tunnel for AD authentication
   netapp.ontap.na_ontap_domain_tunnel:
+    hostname: "{{ storage_fsx_configure_netapp_hostname }}"
+    username: "{{ storage_fsx_configure_netapp_username }}"
+    password: "{{ storage_fsx_configure_netapp_password }}"
+    https: true
+    validate_certs: "{{ storage_fsx_configure_netapp_validate_certs }}"
+    use_rest: always
     state: present
     vserver: "{{ storage_fsx_configure_vserver }}"
 
 - name: Get current security login users
   netapp.ontap.na_ontap_rest_info:
+    hostname: "{{ storage_fsx_configure_netapp_hostname }}"
+    username: "{{ storage_fsx_configure_netapp_username }}"
+    password: "{{ storage_fsx_configure_netapp_password }}"
+    https: true
+    validate_certs: "{{ storage_fsx_configure_netapp_validate_certs }}"
+    use_rest: always
     gather_subset:
       - security/accounts
     fields:
@@ -68,6 +80,12 @@
 
 - name: Add new domain admins
   netapp.ontap.na_ontap_user:
+    hostname: "{{ storage_fsx_configure_netapp_hostname }}"
+    username: "{{ storage_fsx_configure_netapp_username }}"
+    password: "{{ storage_fsx_configure_netapp_password }}"
+    https: true
+    validate_certs: "{{ storage_fsx_configure_netapp_validate_certs }}"
+    use_rest: always
     state: present
     name: "{{ storage_fsx_configure_cifs_domain }}\\{{ item }}"
     vserver: "{{ storage_fsx_configure_cluster_name }}"
@@ -80,6 +98,12 @@
 
 - name: Remove existing admin users not present in desired list
   netapp.ontap.na_ontap_user:
+    hostname: "{{ storage_fsx_configure_netapp_hostname }}"
+    username: "{{ storage_fsx_configure_netapp_username }}"
+    password: "{{ storage_fsx_configure_netapp_password }}"
+    https: true
+    validate_certs: "{{ storage_fsx_configure_netapp_validate_certs }}"
+    use_rest: always
     state: absent
     name: "{{ storage_fsx_configure_cifs_domain }}\\{{ item }}"
     vserver: "{{ storage_fsx_configure_cluster_name }}"
