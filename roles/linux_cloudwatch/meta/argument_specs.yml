@@ -1,0 +1,67 @@
+---
+argument_specs:
+  main:
+    short_description: Install the Amazon CloudWatch agent and apply its configuration.
+    description:
+      - Installs the Amazon CloudWatch agent, writes linux_cloudwatch_config as
+        its configuration, and sets the service state.
+      - Supports Amazon Linux 2023, or RHEL/Rocky 8, 9, or 10. On release 8, use
+        ansible-core >= 2.21 with Python >= 3.9 on the host, or ansible-core <= 2.16
+        with the system Python.
+      - Installs the agent if missing, below linux_cloudwatch_min_version, or
+        different from a pinned linux_cloudwatch_download_version (downgrading
+        if needed).
+    options:
+      linux_cloudwatch_config:
+        type: dict
+        required: true
+        description: Agent configuration, written as YAML; must be non-empty.
+      linux_cloudwatch_service_enabled:
+        type: bool
+        required: false
+        default: true
+        description: Start the agent at boot.
+      linux_cloudwatch_service_state:
+        type: str
+        required: false
+        default: started
+        choices:
+          - started
+          - stopped
+        description: started or stopped; use stopped for AMI builds.
+      linux_cloudwatch_min_version:
+        type: str
+        required: false
+        default: ""
+        description: Minimum agent version, e.g. 1.300070.0; an older agent is upgraded.
+      linux_cloudwatch_install_method:
+        type: str
+        required: false
+        default: auto
+        choices:
+          - auto
+          - repo
+          - download
+        description: >-
+          auto uses repo on Amazon Linux and download on RHEL/Rocky. repo installs
+          from the host's repositories. download downloads the RPM from
+          linux_cloudwatch_download_base_url, verifies its signature, then installs.
+      linux_cloudwatch_download_base_url:
+        type: str
+        required: false
+        default: https://amazoncloudwatch-agent.s3.amazonaws.com
+        description: Bucket or mirror used by download.
+      linux_cloudwatch_download_version:
+        type: str
+        required: false
+        default: latest
+        description: latest, or a release to pin, e.g. 1.300074.1b2005 (download only).
+      linux_cloudwatch_mode:
+        type: str
+        required: false
+        default: ec2
+        choices:
+          - ec2
+          - onPremise
+          - auto
+        description: ec2, onPremise or auto; passed to amazon-cloudwatch-agent-ctl -m.

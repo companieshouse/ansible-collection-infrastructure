@@ -1,0 +1,38 @@
+---
+- name: Prepare
+  hosts: all
+  gather_facts: false
+  vars:
+    molecule_extra_ca_file: "{{ lookup('ansible.builtin.env', 'MOLECULE_EXTRA_CA_FILE') }}"
+  tasks:
+    # Needed to work with corporate TLS/SSL inspection
+    - name: Trust a TLS-inspecting proxy certificate if supplied
+      ansible.builtin.raw: >-
+        printf '%s\n' {{ lookup('ansible.builtin.file', molecule_extra_ca_file) | quote }}
+        > /etc/pki/ca-trust/source/anchors/molecule-extra-ca.pem
+        && chmod 0644 /etc/pki/ca-trust/source/anchors/molecule-extra-ca.pem
+        && update-ca-trust extract
+      changed_when: true
+      when: molecule_extra_ca_file | length > 0
+
+    - name: Install supported Python for controller's ansible-core
+      ansible.builtin.raw: dnf -y install {{ molecule_python_package }}
+      register: linux_cloudwatch_prepare_python
+      changed_when: "'Nothing to do' not in linux_cloudwatch_prepare_python.stdout"
+      when: molecule_python_package is defined
+
+    - name: Create AWS credentials directory
+      ansible.builtin.file:
+        path: /root/.aws
+        state: directory
+        mode: "0700"
+
+    - name: Write placeholder AWS credentials
+      ansible.builtin.copy:
+        content: |
+          [AmazonCloudWatchAgent]
+          aws_access_key_id = EXAMPLE123
+          aws_secret_access_key = example
+          region = eu-west-2
+        dest: /root/.aws/credentials
+        mode: "0600"

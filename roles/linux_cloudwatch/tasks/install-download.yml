@@ -1,0 +1,116 @@
+---
+- name: Download, verify, and install CloudWatch agent
+  when:
+    - linux_cloudwatch_install_needed | bool
+    - not ansible_check_mode
+  block:
+    - name: Assess if AWS publishes a CloudWatch agent RPM for this architecture
+      ansible.builtin.assert:
+        that:
+          - ansible_facts['architecture'] in linux_cloudwatch_arch_names
+        fail_msg: >-
+          AWS publishes no CloudWatch RPM for {{ ansible_facts['architecture'] }}.
+          Known supported: {{ linux_cloudwatch_arch_names.keys() | join(', ') }}.
+        quiet: true
+
+    - name: Install GnuPG to verify package signature
+      ansible.builtin.dnf:
+        name: /usr/bin/gpg
+        state: present
+
+    - name: Create working directory
+      ansible.builtin.tempfile:
+        state: directory
+        suffix: .cloudwatch-agent
+      register: linux_cloudwatch_tmp
+
+    - name: Create isolated GnuPG directory
+      ansible.builtin.file:
+        path: "{{ linux_cloudwatch_tmp.path }}/gnupg"
+        state: directory
+        mode: "0700"
+
+    - name: Download CloudWatch agent pubkey, package, and signature
+      vars:
+        linux_cloudwatch_rpm_url: >-
+          {{ linux_cloudwatch_download_base_url }}/{{
+          linux_cloudwatch_platform.download_os }}/{{
+          linux_cloudwatch_arch_names[ansible_facts['architecture']] }}/{{
+          linux_cloudwatch_download_version }}/amazon-cloudwatch-agent.rpm
+      ansible.builtin.get_url:
+        url: "{{ item }}"
+        dest: "{{ linux_cloudwatch_tmp.path }}/{{ item | basename }}"
+        mode: "0600"
+        timeout: "{{ linux_cloudwatch_download_timeout }}"
+      register: linux_cloudwatch_download
+      until: linux_cloudwatch_download is succeeded
+      retries: "{{ linux_cloudwatch_download_retries }}"
+      delay: "{{ linux_cloudwatch_download_delay }}"
+      loop:
+        - "{{ linux_cloudwatch_download_base_url }}/assets/amazon-cloudwatch-agent.gpg"
+        - "{{ linux_cloudwatch_rpm_url }}"
+        - "{{ linux_cloudwatch_rpm_url }}.sig"
+
+    - name: Convert CloudWatch agent pubkey to keyring
+      ansible.builtin.command:
+        argv:
+          - gpg
+          - --homedir
+          - "{{ linux_cloudwatch_tmp.path }}/gnupg"
+          - --batch
+          - --dearmor
+          - --output
+          - "{{ linux_cloudwatch_tmp.path }}/amazon-cloudwatch-agent.keyring"
+          - "{{ linux_cloudwatch_tmp.path }}/amazon-cloudwatch-agent.gpg"
+      changed_when: false
+
+    - name: Verify package signature
+      ansible.builtin.command:
+        argv:
+          - gpg
+          - --homedir
+          - "{{ linux_cloudwatch_tmp.path }}/gnupg"
+          - --batch
+          - --no-default-keyring
+          - --keyring
+          - "{{ linux_cloudwatch_tmp.path }}/amazon-cloudwatch-agent.keyring"
+          - --status-fd
+          - "1"
+          - --verify
+          - "{{ linux_cloudwatch_tmp.path }}/amazon-cloudwatch-agent.rpm.sig"
+          - "{{ linux_cloudwatch_tmp.path }}/amazon-cloudwatch-agent.rpm"
+      register: linux_cloudwatch_gpg_verify
+      changed_when: false
+      failed_when: false
+
+    - name: Check if package was signed by AWS
+      vars:
+        linux_cloudwatch_signer_fingerprints: >-
+          {{ linux_cloudwatch_gpg_verify.stdout_lines
+             | select('match', '^\[GNUPG:\] VALIDSIG ')
+             | map('split') | map('last') | list }}
+      ansible.builtin.assert:
+        that:
+          - linux_cloudwatch_gpg_verify.rc == 0
+          - linux_cloudwatch_gpg_fingerprint in linux_cloudwatch_signer_fingerprints
+        fail_msg: >-
+          The CloudWatch agent package signature does not match
+          {{ linux_cloudwatch_gpg_fingerprint }}, reported:
+          {{ linux_cloudwatch_gpg_verify.stderr }}
+          Check if AWS has published a new key.
+        quiet: true
+
+    - name: Install verified CloudWatch agent
+      ansible.builtin.dnf:
+        name: "{{ linux_cloudwatch_tmp.path }}/amazon-cloudwatch-agent.rpm"
+        # RPM doesn't carry signature, hence checks above
+        disable_gpg_check: true
+        allow_downgrade: "{{ linux_cloudwatch_version_pinned | bool }}"
+        state: present
+
+  always:
+    - name: Remove working directory
+      ansible.builtin.file:
+        path: "{{ linux_cloudwatch_tmp.path }}"
+        state: absent
+      when: linux_cloudwatch_tmp.path is defined

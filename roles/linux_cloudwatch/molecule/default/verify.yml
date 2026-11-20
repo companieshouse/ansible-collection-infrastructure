@@ -1,0 +1,83 @@
+---
+- name: Verify
+  hosts: all
+  gather_facts: true
+  tasks:
+    - name: Assert the instance is running the release in its inventory
+      ansible.builtin.assert:
+        that:
+          - ansible_facts['distribution'] == molecule_expected_distribution
+          - ansible_facts['distribution_major_version'] == molecule_expected_major_version
+        fail_msg: >-
+          Expected {{ molecule_expected_distribution }} {{ molecule_expected_major_version }}
+          but found {{ ansible_facts['distribution'] }} {{ ansible_facts['distribution_major_version'] }}.
+        quiet: true
+
+    - name: Gather installed package facts
+      ansible.builtin.package_facts:
+        manager: rpm
+
+    - name: Assert CloudWatch agent is installed
+      ansible.builtin.assert:
+        that:
+          - "'amazon-cloudwatch-agent' in ansible_facts['packages']"
+        fail_msg: Missing installed amazon-cloudwatch-agent package
+        quiet: true
+
+    - name: Check translated configuration exists
+      ansible.builtin.stat:
+        path: /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.toml
+      register: linux_cloudwatch_verify_translated
+
+    - name: Assert translated configuration exists
+      ansible.builtin.assert:
+        that:
+          - linux_cloudwatch_verify_translated.stat.exists
+        fail_msg: Missing /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.toml
+        quiet: true
+
+    - name: Read unit's status
+      ansible.builtin.systemd_service:
+        name: amazon-cloudwatch-agent.service
+      register: linux_cloudwatch_verify_unit
+
+    - name: Assert the unit is enabled and stopped
+      ansible.builtin.assert:
+        that:
+          - linux_cloudwatch_verify_unit.status.UnitFileState == 'enabled'
+          - linux_cloudwatch_verify_unit.status.ActiveState != 'active'
+        fail_msg: >-
+          Expected amazon-cloudwatch-agent.service to be enabled and not active, but found
+          UnitFileState {{ linux_cloudwatch_verify_unit.status.UnitFileState }} and
+          ActiveState {{ linux_cloudwatch_verify_unit.status.ActiveState }}.
+        quiet: true
+
+    - name: Check service start translates the configuration successfully
+      block:
+        - name: Record when the translated configuration was last written
+          ansible.builtin.stat:
+            path: /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.toml
+            get_checksum: false
+          register: linux_cloudwatch_verify_before_start
+
+        - name: Start the agent
+          ansible.builtin.systemd_service:
+            name: amazon-cloudwatch-agent.service
+            state: started
+
+        - name: Wait for start to rewrite translated configuration
+          ansible.builtin.stat:
+            path: /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.toml
+            get_checksum: false
+          register: linux_cloudwatch_verify_after_start
+          until: >-
+            linux_cloudwatch_verify_after_start.stat.mtime
+            > linux_cloudwatch_verify_before_start.stat.mtime
+          retries: 24
+          delay: 5
+
+      always:
+        - name: Stop the agent
+          ansible.builtin.systemd_service:
+            name: amazon-cloudwatch-agent.service
+            state: stopped
