@@ -8,6 +8,7 @@ configuration, and sets the service state.
 - Ansible `>= 2.15.6`
 - Amazon Linux 2023, or RHEL/Rocky 8, 9, or 10
 - Access to `linux_cloudwatch_download_base_url` if using `download` method
+- Log groups must exist before the agent starts (e.g. created with Terraform as outlined below)
 
 ### RHEL/Rocky 8
 
@@ -28,6 +29,55 @@ dropped in 2.17. Use either:
 | `linux_cloudwatch_download_base_url` | no | `https://amazoncloudwatch-agent.s3.amazonaws.com` | Bucket or mirror used by `download` |
 | `linux_cloudwatch_download_version` | no | `latest` | `latest`, or a release to pin, e.g. `1.300074.1b2005` (`download` only) |
 | `linux_cloudwatch_mode` | no | `ec2` | `ec2`, `onPremise` or `auto`; passed to `amazon-cloudwatch-agent-ctl -m` |
+
+## Terraform (pre-reqs)
+
+Each `log_group_name` in `linux_cloudwatch_config` must exist before the agent
+starts. Retention and encryption should be set in Terraform and `retention_in_days`
+omitted from agent configuration. The instance role only needs
+`logs:CreateLogStream` and `logs:PutLogEvents`, which `instance_profile` module
+in [terraform-modules](https://github.com/companieshouse/terraform-modules) grants
+via `cw_log_group_arns`:
+
+```hcl
+resource "aws_cloudwatch_log_group" "journal" {
+  name              = "/aws/ec2/example/journal"
+  retention_in_days = 7
+  kms_key_id        = local.cloudwatch_logs_kms_key
+}
+
+module "instance_profile" {
+  source = "git@github.com:my-terraform-modules//aws/instance_profile?ref=tags/<version>"
+
+  name              = "example_profile"
+  cw_log_group_arns = ["${aws_cloudwatch_log_group.journal.arn}:*"]
+}
+```
+
+If configuration has a `metrics` section, the role needs
+`cloudwatch:PutMetricData` scoped to the agent's namespace
+(`CWAgent` by default):
+
+```hcl
+data "aws_iam_policy_document" "cloudwatch_metrics" {
+  statement {
+    actions   = ["cloudwatch:PutMetricData"]
+    resources = ["*"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "cloudwatch:namespace"
+      values   = ["CWAgent"]
+    }
+  }
+}
+
+resource "aws_iam_role_policy" "cloudwatch_metrics" {
+  name   = "example-cloudwatch-metrics"
+  role   = module.instance_profile.aws_iam_role.name
+  policy = data.aws_iam_policy_document.cloudwatch_metrics.json
+}
+```
 
 ## Usage
 

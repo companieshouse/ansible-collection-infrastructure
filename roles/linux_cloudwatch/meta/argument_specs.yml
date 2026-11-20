@@ -11,6 +11,10 @@ argument_specs:
       - Installs the agent if missing, below linux_cloudwatch_min_version, or
         different from a pinned linux_cloudwatch_download_version (downgrading
         if needed).
+      - Log groups must exist before the agent starts (e.g. created with
+        Terraform). Leave retention_in_days out of configuration as the
+        instance role only needs logs:CreateLogStream and logs:PutLogEvents,
+        plus cloudwatch:PutMetricData if desired.
     options:
       linux_cloudwatch_config:
         type: dict
