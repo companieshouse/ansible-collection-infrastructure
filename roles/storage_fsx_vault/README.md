@@ -72,15 +72,6 @@ the vars should be mapped across:
 - hosts: localhost
   gather_facts: false
 
-  module_defaults:
-    group/netapp.ontap.netapp_ontap:
-      hostname: "{{ storage_fsx_configure_netapp_hostname }}"
-      username: "{{ storage_fsx_configure_netapp_username }}"
-      password: "{{ storage_fsx_configure_netapp_password }}"
-      https: true
-      validate_certs: false
-      use_rest: always
-
   roles:
     - role: companieshouse.infrastructure.storage_fsx_vault
       tags: [vault]

@@ -1,0 +1,48 @@
+---
+linux_cloudwatch_package: amazon-cloudwatch-agent
+linux_cloudwatch_service: amazon-cloudwatch-agent.service
+
+linux_cloudwatch_agent_dir: /opt/aws/amazon-cloudwatch-agent
+linux_cloudwatch_ctl: "{{ linux_cloudwatch_agent_dir }}/bin/amazon-cloudwatch-agent-ctl"
+
+linux_cloudwatch_config_file: /etc/amazon-cloudwatch-agent.json
+linux_cloudwatch_fetched_file: >-
+  {{ linux_cloudwatch_agent_dir }}/etc/amazon-cloudwatch-agent.d/file_{{ linux_cloudwatch_config_file | basename }}
+linux_cloudwatch_translated_file: "{{ linux_cloudwatch_agent_dir }}/etc/amazon-cloudwatch-agent.toml"
+
+linux_cloudwatch_platforms:
+  Amazon:
+    versions: ["2023"]
+    install_method: repo
+    download_os: amazon_linux
+  RedHat:
+    versions: ["10", "9", "8"]
+    install_method: download
+    download_os: redhat
+  Rocky:
+    versions: ["10", "9", "8"]
+    install_method: download
+    download_os: redhat
+
+linux_cloudwatch_platform: >-
+  {{ linux_cloudwatch_platforms[ansible_facts['distribution']] }}
+linux_cloudwatch_effective_install_method: >-
+  {{ linux_cloudwatch_platform.install_method
+     if linux_cloudwatch_install_method == 'auto'
+     else linux_cloudwatch_install_method }}
+
+linux_cloudwatch_version_pinned: >-
+  {{ (linux_cloudwatch_effective_install_method == 'download'
+      and linux_cloudwatch_download_version != 'latest') | bool }}
+
+linux_cloudwatch_version_pattern: '^[0-9]+(\.[0-9]+)*'
+
+linux_cloudwatch_arch_names:
+  x86_64: amd64
+  aarch64: arm64
+
+linux_cloudwatch_download_timeout: 240
+linux_cloudwatch_download_retries: 5
+linux_cloudwatch_download_delay: 2
+
+linux_cloudwatch_gpg_fingerprint: 937616F3450B7D806CBD9725D58167303B789C72

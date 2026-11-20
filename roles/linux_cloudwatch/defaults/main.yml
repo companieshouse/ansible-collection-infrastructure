@@ -1,0 +1,8 @@
+---
+linux_cloudwatch_service_enabled: true
+linux_cloudwatch_service_state: started
+linux_cloudwatch_min_version: ""
+linux_cloudwatch_install_method: auto
+linux_cloudwatch_download_base_url: https://amazoncloudwatch-agent.s3.amazonaws.com
+linux_cloudwatch_download_version: latest
+linux_cloudwatch_mode: ec2

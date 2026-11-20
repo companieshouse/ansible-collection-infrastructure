@@ -18,8 +18,8 @@ in this collection's `galaxy.yml`.
 
 ## Variables
 
-All inputs are required and validated via `meta/argument_specs.yml`; the
-role will refuse to run with anything missing. All are supplied by
+All inputs are validated via `meta/argument_specs.yml`; the role will refuse
+to run with a required input missing. All required inputs are supplied by
 `storage_fsx_vault` when the two roles are used together.
 
 | Variable | Type | Description |
@@ -36,6 +36,12 @@ role will refuse to run with anything missing. All are supplied by
 | `storage_fsx_configure_dc_ou` | str | DN of the OU where the CIFS computer object lives |
 | `storage_fsx_configure_domain_admins` | list | Domain usernames (sAMAccountName) to grant the fsxadmin role |
 
+Optional:
+
+| Variable | Type | Default | Description |
+|---|---|---|---|
+| `storage_fsx_configure_netapp_validate_certs` | bool | `false` | Verify the TLS certificate of the FSx management endpoint |
+
 ## Usage
 
 `storage_fsx_vault` supplies every input this role requires; unless
@@ -44,15 +50,6 @@ you are supplying local vars, these must be mapped across e.g.
 ```yaml
 - hosts: localhost
   gather_facts: false
-
-  module_defaults:
-    group/netapp.ontap.netapp_ontap:
-      hostname: "{{ storage_fsx_configure_netapp_hostname }}"
-      username: "{{ storage_fsx_configure_netapp_username }}"
-      password: "{{ storage_fsx_configure_netapp_password }}"
-      https: true
-      validate_certs: false
-      use_rest: always
 
   roles:
     - role: companieshouse.infrastructure.storage_fsx_vault

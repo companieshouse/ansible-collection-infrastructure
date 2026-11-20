@@ -1,6 +1,12 @@
 ---
 - name: Gather cluster info from ONTAP
   netapp.ontap.na_ontap_rest_info:
+    hostname: "{{ storage_fsx_configure_netapp_hostname }}"
+    username: "{{ storage_fsx_configure_netapp_username }}"
+    password: "{{ storage_fsx_configure_netapp_password }}"
+    https: true
+    validate_certs: "{{ storage_fsx_configure_netapp_validate_certs }}"
+    use_rest: always
     gather_subset:
       - cluster
     fields:

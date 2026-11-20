@@ -1,0 +1,190 @@
+---
+- name: Gather facts to determine platform support
+  ansible.builtin.setup:
+    gather_subset: min
+  when: >-
+    ['distribution', 'distribution_major_version', 'architecture']
+    | difference(ansible_facts.keys() | list) | length > 0
+
+- name: Assess if platform is supported
+  vars:
+    linux_cloudwatch_supported_list: >-
+      {% for name, platform in linux_cloudwatch_platforms.items() -%}
+      {{ name }} {{ platform.versions | join(', ') }}{{ '; ' if not loop.last }}
+      {%- endfor %}
+  ansible.builtin.assert:
+    that:
+      - ansible_facts['distribution'] in linux_cloudwatch_platforms
+      - ansible_facts['distribution_major_version']
+        in linux_cloudwatch_platforms[ansible_facts['distribution']].versions
+    fail_msg: >-
+      {{ ansible_facts['distribution'] }} {{ ansible_facts['distribution_major_version'] }} not supported.
+      This role has been written for and tested on: {{ linux_cloudwatch_supported_list }}.
+    quiet: true
+
+- name: Assert ansible-core can manage packages on release 8
+  ansible.builtin.assert:
+    that:
+      - ansible_version.full is version('2.21', '>=') or ansible_version.full is version('2.17', '<')
+    fail_msg: >-
+      ansible-core {{ ansible_version.full }} cannot manage packages on
+      {{ ansible_facts['distribution'] }} 8. Use ansible-core 2.21 or later with
+      Python 3.9 or later on the host, or ansible-core 2.16 or earlier.
+    quiet: true
+  when: ansible_facts['distribution_major_version'] == '8'
+
+- name: Assert agent configuration was provided
+  ansible.builtin.assert:
+    that:
+      - linux_cloudwatch_config is mapping
+      - linux_cloudwatch_config | length > 0
+    fail_msg: >-
+      linux_cloudwatch_config must be a non-empty dict holding the agent's
+      JSON configuration, written as YAML.
+    quiet: true
+
+- name: Validate given minimum agent version
+  ansible.builtin.assert:
+    that:
+      - linux_cloudwatch_min_version is match('^[0-9]+(\.[0-9]+)*$')
+    fail_msg: >-
+      linux_cloudwatch_min_version is '{{ linux_cloudwatch_min_version }}';
+      set a version such as 1.300070.0, or leave it empty to skip the check.
+    quiet: true
+  when: linux_cloudwatch_min_version | length > 0
+
+- name: Validate given download version
+  ansible.builtin.assert:
+    that:
+      - linux_cloudwatch_download_version is match('^(latest|[0-9][0-9A-Za-z.]*)$')
+    fail_msg: >-
+      linux_cloudwatch_download_version is '{{ linux_cloudwatch_download_version }}';
+      set latest, or a full release string such as 1.300074.1b2005.
+    quiet: true
+
+- name: Assess pinned download version >= minimum agent version
+  ansible.builtin.assert:
+    that:
+      - linux_cloudwatch_download_version | regex_search(linux_cloudwatch_version_pattern)
+        is version(linux_cloudwatch_min_version, '>=')
+    fail_msg: >-
+      linux_cloudwatch_download_version {{ linux_cloudwatch_download_version }}
+      is below linux_cloudwatch_min_version {{ linux_cloudwatch_min_version }}.
+      Raise the pin, or lower the minimum.
+    quiet: true
+  when:
+    - linux_cloudwatch_version_pinned | bool
+    - linux_cloudwatch_min_version | length > 0
+
+- name: Gather installed package facts
+  ansible.builtin.package_facts:
+    manager: rpm
+
+- name: Record installed CloudWatch agent version
+  vars:
+    linux_cloudwatch_installed: >-
+      {{ ansible_facts['packages'].get(linux_cloudwatch_package, [])
+         | map(attribute='version') | first | default('') }}
+  ansible.builtin.set_fact:
+    linux_cloudwatch_installed_version: "{{ linux_cloudwatch_installed }}"
+    linux_cloudwatch_installed_version_numeric: >-
+      {{ linux_cloudwatch_installed
+         | regex_search(linux_cloudwatch_version_pattern) | default('', true) }}
+
+- name: Assess if CloudWatch agent is below minimum or differs from pin
+  ansible.builtin.set_fact:
+    linux_cloudwatch_upgrade_needed: >-
+      {{ (linux_cloudwatch_installed_version_numeric | length > 0
+          and linux_cloudwatch_min_version | length > 0
+          and linux_cloudwatch_installed_version_numeric is version(linux_cloudwatch_min_version, '<')) | bool }}
+    linux_cloudwatch_pin_mismatch: >-
+      {{ (linux_cloudwatch_version_pinned | bool
+          and linux_cloudwatch_installed_version | length > 0
+          and linux_cloudwatch_installed_version != linux_cloudwatch_download_version) | bool }}
+
+- name: Assess if CloudWatch agent needs installing
+  ansible.builtin.set_fact:
+    linux_cloudwatch_install_needed: >-
+      {{ (linux_cloudwatch_package not in ansible_facts['packages']
+          or linux_cloudwatch_upgrade_needed | bool
+          or linux_cloudwatch_pin_mismatch | bool) | bool }}
+
+- name: Install CloudWatch agent
+  ansible.builtin.include_tasks: "install-{{ linux_cloudwatch_effective_install_method }}.yml"
+
+- name: Re-gather installed package facts
+  ansible.builtin.package_facts:
+    manager: rpm
+
+- name: Assert installed agent meets given minimum version
+  vars:
+    linux_cloudwatch_post_install_version: >-
+      {{ ansible_facts['packages'][linux_cloudwatch_package] | map(attribute='version') | first }}
+  ansible.builtin.assert:
+    that:
+      - linux_cloudwatch_post_install_version
+        | regex_search(linux_cloudwatch_version_pattern)
+        is version(linux_cloudwatch_min_version, '>=')
+    fail_msg: >-
+      {{ linux_cloudwatch_package }} {{ linux_cloudwatch_post_install_version }}
+      is installed, but at least {{ linux_cloudwatch_min_version }} is required.
+      {{ 'The repositories on this host do not carry a new enough build. On Amazon Linux the
+         repository is pinned to the base image release, so rebuild from a newer base image.'
+         if linux_cloudwatch_effective_install_method == 'repo'
+         else 'Check linux_cloudwatch_download_version and
+         linux_cloudwatch_download_base_url.' }}
+    quiet: true
+  when:
+    - linux_cloudwatch_min_version | length > 0
+    - linux_cloudwatch_package in ansible_facts['packages']
+    - not (ansible_check_mode and linux_cloudwatch_install_needed | bool)
+
+- name: Write agent configuration
+  ansible.builtin.copy:
+    content: "{{ linux_cloudwatch_config | to_nice_json }}\n"
+    dest: "{{ linux_cloudwatch_config_file }}"
+    owner: root
+    group: root
+    mode: "0640"
+  register: linux_cloudwatch_written
+
+- name: Check agent's fetched configuration
+  ansible.builtin.stat:
+    path: "{{ linux_cloudwatch_fetched_file }}"
+  register: linux_cloudwatch_fetched
+
+- name: Check agent's translated configuration
+  ansible.builtin.stat:
+    path: "{{ linux_cloudwatch_translated_file }}"
+    get_checksum: false
+  register: linux_cloudwatch_translated
+
+- name: Translate and validate the agent configuration
+  ansible.builtin.command:
+    argv:
+      - "{{ linux_cloudwatch_ctl }}"
+      - -a
+      - fetch-config
+      - -m
+      - "{{ linux_cloudwatch_mode }}"
+      - -c
+      - "file:{{ linux_cloudwatch_config_file }}"
+  changed_when: true
+  notify: Restart CloudWatch agent
+  when: >-
+    not linux_cloudwatch_translated.stat.exists
+    or not linux_cloudwatch_fetched.stat.exists
+    or linux_cloudwatch_fetched.stat.checksum != (linux_cloudwatch_written.checksum | default(''))
+
+- name: Set whether CloudWatch agent starts at boot
+  ansible.builtin.systemd_service:
+    name: "{{ linux_cloudwatch_service }}"
+    enabled: "{{ linux_cloudwatch_service_enabled }}"
+  when: linux_cloudwatch_package in ansible_facts['packages']
+
+- name: Set CloudWatch agent service state
+  ansible.builtin.systemd_service:
+    name: "{{ linux_cloudwatch_service }}"
+    state: "{{ linux_cloudwatch_service_state }}"
+  register: linux_cloudwatch_service_result
+  when: linux_cloudwatch_package in ansible_facts['packages']

@@ -1,0 +1,9 @@
+---
+galaxy_info:
+  standalone: false
+  role_name: linux_cloudwatch
+  author: ls-comh
+  description: Install the Amazon CloudWatch agent and apply its configuration.
+  company: Companies House
+  license: MIT
+dependencies: []

@@ -1,6 +1,12 @@
 ---
 - name: Get current CIFS security settings
   netapp.ontap.na_ontap_rest_cli:
+    hostname: "{{ storage_fsx_configure_netapp_hostname }}"
+    username: "{{ storage_fsx_configure_netapp_username }}"
+    password: "{{ storage_fsx_configure_netapp_password }}"
+    https: true
+    validate_certs: "{{ storage_fsx_configure_netapp_validate_certs }}"
+    use_rest: always
     command: "vserver/cifs/security"
     verb: GET
     params:
@@ -10,6 +16,12 @@
 
 - name: Require encryption for SVM-to-DC connections
   netapp.ontap.na_ontap_rest_cli:
+    hostname: "{{ storage_fsx_configure_netapp_hostname }}"
+    username: "{{ storage_fsx_configure_netapp_username }}"
+    password: "{{ storage_fsx_configure_netapp_password }}"
+    https: true
+    validate_certs: "{{ storage_fsx_configure_netapp_validate_certs }}"
+    use_rest: always
     command: "vserver/cifs/security"
     verb: PATCH
     params:
@@ -22,6 +34,12 @@
 
 - name: Require signing for LDAP communications.
   netapp.ontap.na_ontap_rest_cli:
+    hostname: "{{ storage_fsx_configure_netapp_hostname }}"
+    username: "{{ storage_fsx_configure_netapp_username }}"
+    password: "{{ storage_fsx_configure_netapp_password }}"
+    https: true
+    validate_certs: "{{ storage_fsx_configure_netapp_validate_certs }}"
+    use_rest: always
     command: "vserver/cifs/security"
     verb: PATCH
     params:
@@ -34,6 +52,12 @@
 
 - name: Check existing CIFS server config
   netapp.ontap.na_ontap_rest_info:
+    hostname: "{{ storage_fsx_configure_netapp_hostname }}"
+    username: "{{ storage_fsx_configure_netapp_username }}"
+    password: "{{ storage_fsx_configure_netapp_password }}"
+    https: true
+    validate_certs: "{{ storage_fsx_configure_netapp_validate_certs }}"
+    use_rest: always
     gather_subset:
       - protocols/cifs/services
     fields:
@@ -59,6 +83,12 @@
 
 - name: Create CIFS server and join to Active Directory
   netapp.ontap.na_ontap_cifs_server:
+    hostname: "{{ storage_fsx_configure_netapp_hostname }}"
+    username: "{{ storage_fsx_configure_netapp_username }}"
+    password: "{{ storage_fsx_configure_netapp_password }}"
+    https: true
+    validate_certs: "{{ storage_fsx_configure_netapp_validate_certs }}"
+    use_rest: always
     vserver: "{{ storage_fsx_configure_vserver }}"
     name: "{{ storage_fsx_configure_cifs_server_name }}"
     domain: "{{ storage_fsx_configure_cifs_domain }}"
