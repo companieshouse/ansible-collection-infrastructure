@@ -19,6 +19,10 @@ argument_specs:
         required: true
         no_log: true
         description: fsxadmin password for the cluster.
+      storage_fsx_configure_netapp_validate_certs:
+        type: bool
+        default: false
+        description: Verify the TLS certificate of the FSx management endpoint.
       storage_fsx_configure_vserver:
         type: str
         required: true

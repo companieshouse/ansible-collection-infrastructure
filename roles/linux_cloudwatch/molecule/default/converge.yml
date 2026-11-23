@@ -1,0 +1,41 @@
+---
+- name: Converge
+  hosts: all
+  gather_facts: true
+  vars:
+    linux_cloudwatch_service_enabled: true
+    linux_cloudwatch_service_state: stopped
+    linux_cloudwatch_mode: onPremise
+    linux_cloudwatch_min_version: "1.300070.0"
+    linux_cloudwatch_config:
+      agent:
+        region: eu-west-2
+        run_as_user: root
+      logs:
+        logs_collected:
+          files:
+            collect_list:
+              - file_path: /var/log/messages
+                log_group_name: /molecule/messages
+                log_stream_name: "{hostname}"
+  tasks:
+    - name: Use download method on Amazon Linux instance
+      ansible.builtin.set_fact:
+        linux_cloudwatch_install_method: download
+      when: "'download' in group_names"
+
+    - name: Look up current agent release for pinned instance
+      ansible.builtin.uri:
+        url: https://amazoncloudwatch-agent.s3.amazonaws.com/info/latest/CWAGENT_VERSION
+        return_content: true
+      register: linux_cloudwatch_converge_latest
+      when: "'pinned' in group_names"
+
+    - name: Pin download version on the pinned instance
+      ansible.builtin.set_fact:
+        linux_cloudwatch_download_version: "{{ linux_cloudwatch_converge_latest.content | trim }}"
+      when: "'pinned' in group_names"
+
+    - name: Apply CloudWatch agent role
+      ansible.builtin.include_role:
+        name: linux_cloudwatch

@@ -1,0 +1,8 @@
+---
+- name: Restart CloudWatch agent
+  ansible.builtin.systemd_service:
+    name: "{{ linux_cloudwatch_service }}"
+    state: restarted
+  when:
+    - linux_cloudwatch_service_state == 'started'
+    - not (linux_cloudwatch_service_result.changed | default(false))

@@ -1,0 +1,5 @@
+---
+- name: Install CloudWatch agent from configured repos
+  ansible.builtin.dnf:
+    name: "{{ linux_cloudwatch_package }}"
+    state: "{{ 'latest' if linux_cloudwatch_upgrade_needed | bool else 'present' }}"
