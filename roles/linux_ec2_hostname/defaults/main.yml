@@ -1,0 +1,6 @@
+---
+linux_ec2_hostname_tag_key: Hostname
+linux_ec2_hostname_before_units:
+  - amazon-cloudwatch-agent.service
+linux_ec2_hostname_enabled: true
+linux_ec2_hostname_imds_base_url: http://169.254.169.254/latest

@@ -1,0 +1,8 @@
+---
+- name: Converge
+  hosts: all
+  gather_facts: true
+  vars:
+    linux_ec2_hostname_imds_base_url: http://127.0.0.1:18080/latest
+  roles:
+    - role: linux_ec2_hostname

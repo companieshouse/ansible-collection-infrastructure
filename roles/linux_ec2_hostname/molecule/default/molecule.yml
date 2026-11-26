@@ -1,0 +1,32 @@
+---
+scenario:
+  test_sequence:
+    - destroy
+    - syntax
+    - create
+    - prepare
+    - check
+    - converge
+    - idempotence
+    - verify
+    - destroy
+driver:
+  name: docker
+platforms:
+  - name: linux-ec2-hostname-al2023
+    image: geerlingguy/docker-amazonlinux2023-ansible@sha256:8727aaba41cee16d4077556ac9b58ba7df20936cd301e95e33c4dd519df93f69
+    pre_build_image: true
+    command: /usr/lib/systemd/systemd
+    privileged: true
+    cgroupns_mode: host
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    tmpfs:
+      - /run
+      - /tmp
+provisioner:
+  name: ansible
+  env:
+    ANSIBLE_ROLES_PATH: ${MOLECULE_PROJECT_DIRECTORY}/..
+verifier:
+  name: ansible

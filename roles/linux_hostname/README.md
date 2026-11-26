@@ -1,6 +1,8 @@
 # Role: Linux Hostname | ansible-collection-infrastructure
 
-Sets the hostname of an EC2 instance, using its tags, to the following format:
+NOTE: The newer `linux_ec2_hostname` role is preferred going forward, so please assess that first.
+
+This role sets the hostname of an EC2 instance, using its tags, to the following format:
 `{{ ec2_hostname }}.{{ ec2_zone }}`
 
 This role does assert that both variables are set before doing anything, but

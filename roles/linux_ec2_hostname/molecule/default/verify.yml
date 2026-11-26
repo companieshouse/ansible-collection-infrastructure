@@ -1,0 +1,116 @@
+---
+- name: Verify
+  hosts: all
+  gather_facts: true
+  tasks:
+    - name: Assert the instance is Amazon Linux 2023
+      ansible.builtin.assert:
+        that:
+          - ansible_facts['distribution'] == 'Amazon'
+          - ansible_facts['distribution_major_version'] == '2023'
+        quiet: true
+
+    - name: Inspect installed script and unit
+      ansible.builtin.stat:
+        path: "{{ item }}"
+      loop:
+        - /usr/local/sbin/ec2-hostname-from-tag
+        - /etc/systemd/system/ec2-hostname.service
+      register: linux_ec2_hostname_verify_files
+
+    - name: Assert ownership and permissions
+      ansible.builtin.assert:
+        that:
+          - item.stat.pw_name == 'root'
+          - item.stat.gr_name == 'root'
+          - item.stat.mode == ('0755' if item.item.endswith('from-tag') else '0644')
+        quiet: true
+      loop: "{{ linux_ec2_hostname_verify_files.results }}"
+      loop_control:
+        label: "{{ item.item }}"
+
+    - name: Inspect hostname unit before any explicit start
+      ansible.builtin.systemd_service:
+        name: ec2-hostname.service
+      register: linux_ec2_hostname_verify_unit
+
+    - name: Assert enablement without role-time start and effective ordering
+      ansible.builtin.assert:
+        that:
+          - linux_ec2_hostname_verify_unit.status.UnitFileState == 'enabled'
+          - linux_ec2_hostname_verify_unit.status.ActiveState == 'inactive'
+          - linux_ec2_hostname_verify_unit.status.ExecMainStartTimestampMonotonic == '0'
+          - linux_ec2_hostname_verify_unit.status.Type == 'oneshot'
+          - linux_ec2_hostname_verify_unit.status.SyslogIdentifier == 'ec2-hostname'
+          - "'network-online.target' in linux_ec2_hostname_verify_unit.status.After.split()"
+          - "'cloud-init.service' in linux_ec2_hostname_verify_unit.status.After.split()"
+          - "'network-online.target' in linux_ec2_hostname_verify_unit.status.Wants.split()"
+          - "'amazon-cloudwatch-agent.service' in linux_ec2_hostname_verify_unit.status.Before.split()"
+          - "'multi-user.target' in linux_ec2_hostname_verify_unit.status.WantedBy.split()"
+        quiet: true
+
+    - name: Set a distinct hostname before testing the actual unit
+      ansible.builtin.command: hostnamectl set-hostname before-unit.example.internal
+      changed_when: true
+
+    - name: Start the deployed hostname unit
+      ansible.builtin.systemd_service:
+        name: ec2-hostname.service
+        state: started
+
+    - name: Read the static hostname after the unit completes
+      ansible.builtin.command: hostnamectl --static
+      changed_when: false
+      register: linux_ec2_hostname_verify_hostname
+
+    - name: Assert the real unit changed the hostname
+      ansible.builtin.assert:
+        that:
+          - linux_ec2_hostname_verify_hostname.stdout == 'boot.example.internal'
+        quiet: true
+
+    - name: Run script and metadata boundary tests inside the container
+      ansible.builtin.command:
+        argv:
+          - /usr/bin/python3
+          - /usr/local/libexec/ec2-hostname-test/test_hostname.py
+      changed_when: false
+      register: linux_ec2_hostname_verify_tests
+
+    - name: Report script test results
+      ansible.builtin.debug:
+        var: linux_ec2_hostname_verify_tests.stderr_lines
+
+    - name: Verify a custom metadata tag key
+      vars:
+        linux_ec2_hostname_tag_key: InstanceHostname
+        linux_ec2_hostname_imds_base_url: http://127.0.0.1:18080/latest
+      block:
+        - name: Configure metadata mock to answer the custom tag key
+          ansible.builtin.copy:
+            dest: /run/ec2-hostname-test-response.json
+            owner: root
+            group: root
+            mode: "0600"
+            content: >-
+              {{ {'tag_key': linux_ec2_hostname_tag_key, 'body': 'custom.example.internal'} | to_nice_json }}
+
+        - name: Deploy hostname script with the custom tag key
+          ansible.builtin.include_role:
+            name: linux_ec2_hostname
+
+        - name: Start the hostname unit with the custom tag key
+          ansible.builtin.systemd_service:
+            name: ec2-hostname.service
+            state: started
+
+        - name: Read the hostname after looking up the custom tag key
+          ansible.builtin.command: hostnamectl --static
+          changed_when: false
+          register: linux_ec2_hostname_verify_custom_hostname
+
+        - name: Assert the custom tag key supplied the hostname
+          ansible.builtin.assert:
+            that:
+              - linux_ec2_hostname_verify_custom_hostname.stdout == 'custom.example.internal'
+            quiet: true
