@@ -7,13 +7,19 @@
     | difference(ansible_facts.keys() | list) | length > 0
 
 - name: Assess if platform is supported
+  vars:
+    linux_ec2_hostname_supported_list: >-
+      {% for name, platform in linux_ec2_hostname_platforms.items() -%}
+      {{ name }} {{ platform.versions | join(', ') }}{{ '; ' if not loop.last }}
+      {%- endfor %}
   ansible.builtin.assert:
     that:
-      - ansible_facts['distribution'] == 'Amazon'
-      - ansible_facts['distribution_major_version'] == '2023'
+      - ansible_facts['distribution'] in linux_ec2_hostname_platforms
+      - ansible_facts['distribution_major_version']
+        in linux_ec2_hostname_platforms[ansible_facts['distribution']].versions
     fail_msg: >-
       {{ ansible_facts['distribution'] }} {{ ansible_facts['distribution_major_version'] }} not supported.
-      This role has been written for and tested on Amazon Linux 2023, and RHEL/Rocky 8, 9, & 10.
+      Supported platforms: {{ linux_ec2_hostname_supported_list }}.
     quiet: true
 
 - name: Validate Hostname in metadata

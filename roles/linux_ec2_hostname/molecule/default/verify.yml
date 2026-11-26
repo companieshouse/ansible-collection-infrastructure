@@ -3,11 +3,11 @@
   hosts: all
   gather_facts: true
   tasks:
-    - name: Assert the instance is Amazon Linux 2023
+    - name: Assert the expected distribution and major version
       ansible.builtin.assert:
         that:
-          - ansible_facts['distribution'] == 'Amazon'
-          - ansible_facts['distribution_major_version'] == '2023'
+          - ansible_facts['distribution'] == molecule_expected_distribution
+          - ansible_facts['distribution_major_version'] == molecule_expected_major_version
         quiet: true
 
     - name: Inspect installed script and unit
@@ -44,6 +44,7 @@
           - linux_ec2_hostname_verify_unit.status.SyslogIdentifier == 'ec2-hostname'
           - "'network-online.target' in linux_ec2_hostname_verify_unit.status.After.split()"
           - "'cloud-init.service' in linux_ec2_hostname_verify_unit.status.After.split()"
+          - "'cloud-init-network.service' in linux_ec2_hostname_verify_unit.status.After.split()"
           - "'network-online.target' in linux_ec2_hostname_verify_unit.status.Wants.split()"
           - "'amazon-cloudwatch-agent.service' in linux_ec2_hostname_verify_unit.status.Before.split()"
           - "'multi-user.target' in linux_ec2_hostname_verify_unit.status.WantedBy.split()"
@@ -72,7 +73,7 @@
     - name: Run script and metadata boundary tests inside the container
       ansible.builtin.command:
         argv:
-          - /usr/bin/python3
+          - "{{ ansible_python_interpreter | default('/usr/bin/python3') }}"
           - /usr/local/libexec/ec2-hostname-test/test_hostname.py
       changed_when: false
       register: linux_ec2_hostname_verify_tests

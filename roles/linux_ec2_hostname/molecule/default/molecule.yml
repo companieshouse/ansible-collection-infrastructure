@@ -24,9 +24,58 @@ platforms:
     tmpfs:
       - /run
       - /tmp
+  - name: linux-ec2-hostname-rocky10
+    image: geerlingguy/docker-rockylinux10-ansible@sha256:31fe20134967a69b07c566a393fc1cd737b76fea35d113a3774400b071dcf86a
+    pre_build_image: true
+    command: /usr/lib/systemd/systemd
+    privileged: true
+    cgroupns_mode: host
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    tmpfs:
+      - /run
+      - /tmp
+  - name: linux-ec2-hostname-rocky9
+    image: geerlingguy/docker-rockylinux9-ansible@sha256:fe4403522f5e48aa0a77b86008a184c88b12e7ff9c7f90bcd26f2e9db4f502f1
+    pre_build_image: true
+    command: /usr/lib/systemd/systemd
+    privileged: true
+    cgroupns_mode: host
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    tmpfs:
+      - /run
+      - /tmp
+  - name: linux-ec2-hostname-rocky8
+    image: geerlingguy/docker-rockylinux8-ansible@sha256:b7dde2e654d95964822a8f08ccb7f84e4e42e03a14fb8e4501d4a8967a2597e1
+    pre_build_image: true
+    command: /usr/lib/systemd/systemd
+    privileged: true
+    cgroupns_mode: host
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    tmpfs:
+      - /run
+      - /tmp
 provisioner:
   name: ansible
   env:
     ANSIBLE_ROLES_PATH: ${MOLECULE_PROJECT_DIRECTORY}/..
+  inventory:
+    host_vars:
+      linux-ec2-hostname-al2023:
+        molecule_expected_distribution: Amazon
+        molecule_expected_major_version: "2023"
+      linux-ec2-hostname-rocky10:
+        molecule_expected_distribution: Rocky
+        molecule_expected_major_version: "10"
+      linux-ec2-hostname-rocky9:
+        molecule_expected_distribution: Rocky
+        molecule_expected_major_version: "9"
+      linux-ec2-hostname-rocky8:
+        molecule_expected_distribution: Rocky
+        molecule_expected_major_version: "8"
+        molecule_python_package: python3.12
+        ansible_python_interpreter: /usr/bin/python3.12
 verifier:
   name: ansible

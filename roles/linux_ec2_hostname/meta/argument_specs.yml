@@ -1,14 +1,14 @@
 ---
 argument_specs:
   main:
-    short_description: Set hostname on each boot as EC2 Hostname tag
+    short_description: Set the hostname on each boot from EC2 Hostname tag
     description:
       - A hostname role intended for AMIs, which installs a system service that sets the hostname dynamically (via EC2 tags) upon each boot.
     options:
       linux_ec2_hostname_tag_key:
         type: str
         default: Hostname
-        description: A full Hostname tag value
+        description: Tag key holding the full hostname
       linux_ec2_hostname_before_units:
         type: list
         elements: str

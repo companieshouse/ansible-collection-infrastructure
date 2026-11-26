@@ -5,15 +5,20 @@
   vars:
     molecule_extra_ca_file: "{{ lookup('ansible.builtin.env', 'MOLECULE_EXTRA_CA_FILE') }}"
   tasks:
-    - name: Copy a TLS-inspecting proxy certificate if supplied
-      ansible.builtin.copy:
-        src: "{{ molecule_extra_ca_file }}"
-        dest: /etc/pki/ca-trust/source/anchors/molecule-extra-ca.pem
-        owner: root
-        group: root
-        mode: "0644"
-      notify: Update trusted certificates
+    - name: Trust a TLS-inspecting proxy certificate if supplied
+      ansible.builtin.raw: >-
+        printf '%s\n' {{ lookup('ansible.builtin.file', molecule_extra_ca_file) | quote }}
+        > /etc/pki/ca-trust/source/anchors/molecule-extra-ca.pem
+        && chmod 0644 /etc/pki/ca-trust/source/anchors/molecule-extra-ca.pem
+        && update-ca-trust extract
+      changed_when: true
       when: molecule_extra_ca_file | length > 0
+
+    - name: Install supported Python for controller's ansible-core
+      ansible.builtin.raw: dnf -y install {{ molecule_python_package }}
+      register: linux_ec2_hostname_prepare_python
+      changed_when: "'Nothing to do' not in linux_ec2_hostname_prepare_python.stdout"
+      when: molecule_python_package is defined
 
     - name: Read Docker's bind-mounted hostname file
       ansible.builtin.slurp:
@@ -59,7 +64,7 @@
           [Unit]
           Description=Isolated EC2 hostname test metadata server
           [Service]
-          ExecStart=/usr/bin/python3 /usr/local/libexec/ec2-hostname-test/imds.py
+          ExecStart={{ ansible_python_interpreter | default('/usr/bin/python3') }} /usr/local/libexec/ec2-hostname-test/imds.py
           [Install]
           WantedBy=multi-user.target
 
@@ -80,7 +85,3 @@
       until: linux_ec2_hostname_prepare_mock is succeeded
       retries: 10
       delay: 1
-  handlers:
-    - name: Update trusted certificates
-      ansible.builtin.command: update-ca-trust extract
-      changed_when: true

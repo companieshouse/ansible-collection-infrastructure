@@ -1,7 +1,7 @@
 # {{ ansible_managed }}
 [Unit]
 Description=Set hostname on each boot as EC2 Hostname tag
-After=network-online.target cloud-init.service
+After=network-online.target cloud-init.service cloud-init-network.service
 Wants=network-online.target
 {% if linux_ec2_hostname_before_units | length > 0 %}
 Before={{ linux_ec2_hostname_before_units | join(' ') }}
