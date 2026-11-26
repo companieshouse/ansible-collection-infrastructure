@@ -1,0 +1,10 @@
+---
+galaxy_info:
+  standalone: false
+  role_name: linux_afd_install
+  author: charris-CH
+  description: Install AFD Postcode Lookup software and perfrom test lookup
+  company: Companies House
+  license: MIT
+dependencies: 
+  - amazon.aws

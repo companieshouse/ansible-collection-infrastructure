@@ -1,0 +1,106 @@
+---
+- name: Install lynx browser if not present
+  ansible.builtin.package:
+    name:
+      - lynx
+    state: present
+
+- name: Create /opt/pcplus directory if it does not exist
+  ansible.builtin.file:
+    path: "{{ linux_afd_install_dir }}"
+    state: directory
+    mode: '0755'
+
+- name: Pull AFD Postcode lookup files from S3
+  amazon.aws.s3_object:
+    mode: get
+    bucket: "{{ linux_afd_install_s3_bucket }}"
+    object: "{{ linux_afd_install_file }}"
+    dest: "{{ linux_afd_install_tmp }}"
+
+- name: Extract AFD binaries to /opt/pcplus directory
+  ansible.builtin.unarchive:
+    src: "{{ linux_afd_install_tmp }}/{{ afd_install_file }}"
+    dest: "{{ linux_afd_install_dir }}"
+
+- name: Ensure data directory exists
+  ansible.builtin.file:
+    path: "{{ linux_afd_install_dir }}/data"
+    state: directory
+    mode: '0755'
+
+- name: Determine current year # noqa[no-changed-when]
+  ansible.builtin.command: date +%Y
+  register: linux_afd_install_current_year
+  changed_when: false
+
+- name: Determine current quarter # noqa[no-changed-when]
+  ansible.builtin.command: date +%q
+  register: linux_afd_install_current_quarter
+  changed_when: false
+
+- name: Set data fact
+  ansible.builtin.set_fact:
+    linux_afd_install_current_data: "{{ linux_afd_install_current_year }}_{{ linux_afd_install_current_quarter }}"
+
+- name: Check if current quarter/year AFD data exists in S3
+  amazon.aws.s3_object:
+    mode: list
+    bucket: "{{ linux_afd_install_s3_bucket }}"
+    object: "{{ linux_afd_install_current_afd_data }}"
+  register: linux_afd_install_data_dir_exists
+
+- name: List current data files
+  amazon.aws.s3_object:
+    mode: list
+    bucket: "{{ linux_afd_install_s3_bucket }}"
+    prefix: "{{ linux_afd_install_current_afd_data }}"
+  register: linux_afd_install_data_files
+
+- name: Populate data directory with files from latest quarter
+  amazon.aws.s3_object:
+    mode: get
+    bucket: "{{ linux_afd_install_s3_bucket }}"
+    object: "{{ item }}"
+    dest: "{{ linux_afd_install_dir }}/data"
+  with_items: "{{ linux_afd_install_data_files.s3_keys }}"
+
+- name: Locate pcplus license
+  amazon.aws.s3_object:
+    mode: list
+    bucket: "{{ linux_afd_install_s3_bucket }}"
+    object: "{{ linux_afd_install_pcplus_license }}"
+  register: linux_afd_install_pcplus_license
+
+- name: Download pcplus license
+  amazon.aws.s3_object:
+    mode: get
+    bucket: "{{ linux_afd_install_s3_bucket }}"
+    object: "{{ linux_afd_install_pcplus_license }}"
+    dest: "{{ linux_afd_install_dir }}/data/"
+
+- name: Perform test lookup
+  block:
+    - name: Get latest test postcode from AFD site
+      ansible.bultin.shell: lynx -dump -nolist https://www.afd.co.uk/data-news/ | grep -A 2 \(Q.$(date +%q.%y)\) | tail -n 1
+      register: linux_afd_install_current_postcode
+
+    - name: Set current postcode fact
+      ansible.builtin.set_fact:
+        linux_afd_install_postcode_fact: "{{ linux_afd_install_current_postcode }}"
+
+    - name: Test lookup with retrieved postcode
+      ansible.builtin.shell: |
+          set -eo pipefail
+          /opt/pcplus/bin_linux64/console/addresslookup postcode="{{ linux_afd_install_current_postcode }}" | awk 'NR==7'
+      register: linux_afd_install_test_output
+      changed_when: false
+
+    - name: Set lookup result fact
+      ansible.builtin.set_fact:
+        linux_afd_install_test_fact: "{{ linux_afd_install_test_output }}"
+
+    - name: Confirm lookup success
+      ansible.builtin.debug:
+        msg: "Test successfull!"
+      when: ansible_facts['linux_afd_install_test_fact'] is search(ansible_facts['linux_afd_install_test_fact'])
