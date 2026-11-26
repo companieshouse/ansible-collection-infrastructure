@@ -1,0 +1,96 @@
+---
+- name: Gather facts to determine platform support
+  ansible.builtin.setup:
+    gather_subset: min
+  when: >-
+    ['distribution', 'distribution_major_version']
+    | difference(ansible_facts.keys() | list) | length > 0
+
+- name: Assess if platform is supported
+  vars:
+    linux_ec2_hostname_supported_list: >-
+      {% for name, platform in linux_ec2_hostname_platforms.items() -%}
+      {{ name }} {{ platform.versions | join(', ') }}{{ '; ' if not loop.last }}
+      {%- endfor %}
+  ansible.builtin.assert:
+    that:
+      - ansible_facts['distribution'] in linux_ec2_hostname_platforms
+      - ansible_facts['distribution_major_version']
+        in linux_ec2_hostname_platforms[ansible_facts['distribution']].versions
+    fail_msg: >-
+      {{ ansible_facts['distribution'] }} {{ ansible_facts['distribution_major_version'] }} not supported.
+      Supported platforms: {{ linux_ec2_hostname_supported_list }}.
+    quiet: true
+
+- name: Validate Hostname in metadata
+  ansible.builtin.assert:
+    that:
+      - linux_ec2_hostname_tag_key is string
+      - linux_ec2_hostname_tag_key | length <= 128
+      - linux_ec2_hostname_tag_key is match('^[A-Za-z0-9+=.,_:@-]+\Z')
+      - linux_ec2_hostname_tag_key not in ['.', '..', '_index']
+    fail_msg: >-
+      linux_ec2_hostname_tag_key must be: non-empty, at most 128 characters,
+      using letters, numbers, or +-=.,_:@, and have no spaces.
+      The keys '.', '..' and '_index' are not supported in EC2 metadata.
+    quiet: true
+
+- name: Validate metadata base URL
+  ansible.builtin.assert:
+    that:
+      - linux_ec2_hostname_imds_base_url is string
+      - linux_ec2_hostname_imds_base_url is match('^https?://[A-Za-z0-9.:[\]-]+(/[A-Za-z0-9._~/-]*)?\Z')
+    fail_msg: >-
+      linux_ec2_hostname_imds_base_url must be an HTTP(s) URL with a host
+      and version path, usually http://169.254.169.254/latest
+    quiet: true
+
+- name: Validate service settings
+  ansible.builtin.assert:
+    that:
+      - linux_ec2_hostname_enabled is boolean
+      - linux_ec2_hostname_before_units is sequence
+      - linux_ec2_hostname_before_units is not string
+      - linux_ec2_hostname_before_units is not mapping
+    fail_msg: >-
+      linux_ec2_hostname_enabled should be true or false.
+      linux_ec2_hostname_before_units must be a list of systemd unit names
+      (or [] to omit).
+    quiet: true
+
+- name: Validate units ordered after the hostname attempt
+  ansible.builtin.assert:
+    that:
+      - item is string
+      - item is match('^[A-Za-z0-9][A-Za-z0-9_.@:-]*\.(service|socket|target|timer|path|mount|automount|slice|scope|swap)\Z')
+      - item != 'ec2-hostname.service'
+    fail_msg: >-
+      linux_ec2_hostname_before_units must be a list of other systemd units
+      e.g. amazon-cloudwatch-agent.service
+    quiet: true
+  loop: "{{ linux_ec2_hostname_before_units }}"
+
+- name: Install EC2 hostname script
+  ansible.builtin.template:
+    src: ec2-hostname-from-tag.j2
+    dest: /usr/local/sbin/ec2-hostname-from-tag
+    owner: root
+    group: root
+    mode: "0755"
+    validate: /bin/bash -n %s
+
+- name: Install EC2 hostname unit
+  ansible.builtin.template:
+    src: ec2-hostname.service.j2
+    dest: /etc/systemd/system/ec2-hostname.service
+    owner: root
+    group: root
+    mode: "0644"
+  register: linux_ec2_hostname_unit
+
+- name: Reload systemd and set EC2 hostname unit boot state
+  ansible.builtin.systemd_service:
+    name: ec2-hostname.service
+    daemon_reload: "{{ linux_ec2_hostname_unit.changed }}"
+    enabled: "{{ linux_ec2_hostname_enabled }}"
+  when: not (ansible_check_mode and linux_ec2_hostname_unit.changed)

@@ -1,0 +1,8 @@
+---
+linux_ec2_hostname_platforms:
+  Amazon:
+    versions: ["2023"]
+  RedHat:
+    versions: ["10", "9", "8"]
+  Rocky:
+    versions: ["10", "9", "8"]

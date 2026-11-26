@@ -14,6 +14,7 @@ A collection of Ansible roles used frequently in Companies House infrastructure 
 | Role | Description |
 |---|---|
 | [`linux_cloudwatch`](roles/linux_cloudwatch/README.md) | Install the Amazon CloudWatch agent and apply its configuration. |
+| [`linux_ec2_hostname`](roles/linux_ec2_hostname/README.md) | Set the hostname on each boot from the EC2 Hostname tag. |
 | [`linux_ec2_tags`](roles/linux_ec2_tags/README.md) | Validate required EC2 tag-derived inventory variables are set. |
 | [`linux_hostname`](roles/linux_hostname/README.md) | Set a Linux host's FQDN from EC2 tag-derived inventory variables. |
 | [`linux_python_packages`](roles/linux_python_packages/README.md) | Installs a list of Python packages into a virtualenv using pip. |

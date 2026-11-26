@@ -1,0 +1,52 @@
+#!/bin/bash
+# {{ ansible_managed }}
+set -euo pipefail
+
+tag_key={{ linux_ec2_hostname_tag_key | quote }}
+imds={{ linux_ec2_hostname_imds_base_url | regex_replace('/+$', '') | quote }}
+
+{% raw %}
+curl_opts=(-sS --connect-timeout 2 --max-time 5 --retry 5 --retry-delay 2 --retry-connrefused)
+
+if ! token="$(curl "${curl_opts[@]}" -f \
+    -X PUT -H 'X-aws-ec2-metadata-token-ttl-seconds: 60' \
+    "${imds}/api/token")" || [[ -z "$token" ]]; then
+    echo "Cannot get an IMDSv2 token from ${imds}" >&2
+    exit 1
+fi
+
+body="$(mktemp)"
+trap 'rm -f "$body"' EXIT
+
+if ! status="$(curl "${curl_opts[@]}" \
+    -H "X-aws-ec2-metadata-token: ${token}" \
+    -o "$body" -w '%{http_code}' \
+    "${imds}/meta-data/tags/instance/${tag_key}")"; then
+    echo "Cannot read ${tag_key} tag from ${imds}" >&2
+    exit 1
+fi
+
+if [[ "$status" == 404 ]]; then
+    echo "No ${tag_key} tag in instance metadata (either absent or metadata disabled); hostname unchanged"
+    exit 0
+fi
+if [[ "$status" != 200 ]]; then
+    echo "Unexpected HTTP ${status} reading ${tag_key} tag" >&2
+    exit 1
+fi
+
+name="$(<"$body")"
+label='[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?'
+if [[ ${#name} -gt 64 || ! "$name" =~ ^${label}(\.${label})*$ ]]; then
+    echo "${tag_key} tag value '${name}' invalid (requires lowercase and <=64 characters); hostname unchanged" >&2
+    exit 1
+fi
+
+if [[ "$(hostnamectl --static)" == "$name" ]]; then
+    echo "Hostname already ${name}"
+    exit 0
+fi
+
+hostnamectl set-hostname "$name"
+echo "Hostname set to ${name}"
+{% endraw %}

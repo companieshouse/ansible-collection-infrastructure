@@ -1,0 +1,9 @@
+---
+galaxy_info:
+  standalone: false
+  role_name: linux_ec2_hostname
+  author: ls-comh
+  description: Set the hostname on each boot from EC2 Hostname tag
+  company: Companies House
+  license: MIT
+dependencies: []

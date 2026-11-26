@@ -1,0 +1,87 @@
+---
+- name: Prepare
+  hosts: all
+  gather_facts: false
+  vars:
+    molecule_extra_ca_file: "{{ lookup('ansible.builtin.env', 'MOLECULE_EXTRA_CA_FILE') }}"
+  tasks:
+    - name: Trust a TLS-inspecting proxy certificate if supplied
+      ansible.builtin.raw: >-
+        printf '%s\n' {{ lookup('ansible.builtin.file', molecule_extra_ca_file) | quote }}
+        > /etc/pki/ca-trust/source/anchors/molecule-extra-ca.pem
+        && chmod 0644 /etc/pki/ca-trust/source/anchors/molecule-extra-ca.pem
+        && update-ca-trust extract
+      changed_when: true
+      when: molecule_extra_ca_file | length > 0
+
+    - name: Install supported Python for controller's ansible-core
+      ansible.builtin.raw: dnf -y install {{ molecule_python_package }}
+      register: linux_ec2_hostname_prepare_python
+      changed_when: "'Nothing to do' not in linux_ec2_hostname_prepare_python.stdout"
+      when: molecule_python_package is defined
+
+    - name: Read Docker's bind-mounted hostname file
+      ansible.builtin.slurp:
+        src: /etc/hostname
+      register: linux_ec2_hostname_prepare_hostname
+
+    - name: Unmount Docker's hostname file to allow hostnamectl atomic replacement
+      ansible.builtin.command: umount /etc/hostname
+      changed_when: true
+
+    - name: Restore the hostname file within the container filesystem
+      ansible.builtin.copy:
+        content: "{{ linux_ec2_hostname_prepare_hostname.content | b64decode }}"
+        dest: /etc/hostname
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Create test program directory
+      ansible.builtin.file:
+        path: /usr/local/libexec/ec2-hostname-test
+        state: directory
+        mode: "0755"
+
+    - name: Install in-container metadata mock and tests
+      ansible.builtin.copy:
+        src: "{{ item }}"
+        dest: "/usr/local/libexec/ec2-hostname-test/{{ item }}"
+        owner: root
+        group: root
+        mode: "0644"
+      loop:
+        - imds.py
+        - test_hostname.py
+
+    - name: Install metadata mock unit
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/ec2-hostname-test-imds.service
+        owner: root
+        group: root
+        mode: "0644"
+        content: |
+          [Unit]
+          Description=Isolated EC2 hostname test metadata server
+          [Service]
+          ExecStart={{ ansible_python_interpreter | default('/usr/bin/python3') }} /usr/local/libexec/ec2-hostname-test/imds.py
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: Start metadata mock inside the container
+      ansible.builtin.systemd_service:
+        name: ec2-hostname-test-imds.service
+        daemon_reload: true
+        state: started
+
+    - name: Wait for metadata mock to respond
+      ansible.builtin.uri:
+        url: http://127.0.0.1:18080/latest/api/token
+        method: PUT
+        headers:
+          X-aws-ec2-metadata-token-ttl-seconds: "60"
+        return_content: true
+      register: linux_ec2_hostname_prepare_mock
+      until: linux_ec2_hostname_prepare_mock is succeeded
+      retries: 10
+      delay: 1

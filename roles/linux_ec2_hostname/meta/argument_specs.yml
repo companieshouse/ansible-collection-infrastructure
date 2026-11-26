@@ -1,0 +1,25 @@
+---
+argument_specs:
+  main:
+    short_description: Set the hostname on each boot from EC2 Hostname tag
+    description:
+      - A hostname role intended for AMIs, which installs a system service that sets the hostname dynamically (via EC2 tags) upon each boot.
+    options:
+      linux_ec2_hostname_tag_key:
+        type: str
+        default: Hostname
+        description: Tag key holding the full hostname
+      linux_ec2_hostname_before_units:
+        type: list
+        elements: str
+        default:
+          - amazon-cloudwatch-agent.service
+        description: System units to order after the hostname unit; `[]` omits `Before`
+      linux_ec2_hostname_enabled:
+        type: bool
+        default: true
+        description: Whether unit is enabled to start at boot
+      linux_ec2_hostname_imds_base_url:
+        type: str
+        default: http://169.254.169.254/latest
+        description: Metadata base URL (only override for testing)
